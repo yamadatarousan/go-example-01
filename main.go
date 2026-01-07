@@ -1,12 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func requestIDMiddleware() gin.HandlerFunc {
@@ -44,7 +47,32 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+var db *sql.DB
+
 func initDB() {
+	var err error
+	// --- PostgreSQLへの接続情報 (DSN: Data Source Name) ---
+	// 環境変数から接続情報を取得（Docker環境対応）
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5435")
+	dbUser := getEnv("DB_USER", "user")
+	dbPassword := getEnv("DB_PASSWORD", "password")
+	dbName := getEnv("DB_NAME", "todo_db")
+
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+
+	// 接続確認
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Error connecting to the database: %v", err)
+	}
+
+	log.Println("Successfully connected to the database")
 }
 
 func main() {
