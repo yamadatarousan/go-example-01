@@ -24,33 +24,33 @@
 -   **最新バージョンまで適用する (`up`)**
     未適用のマイグレーションをすべて実行し、データベースを最新の状態にします。
     ```bash
-    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path go/db/migrations up
+    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path db/migrations up
     ```
 
 -   **1つ前のバージョンに戻す (`down`)**
     最後に適用したマイグレーションを1つだけ取り消します。
     ```bash
-    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path go/db/migrations down 1
+    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path db/migrations down 1
     ```
 
 -   **現在のバージョンを確認する (`version`)**
     現在データベースに適用されているマイグレーションのバージョンを確認します。
     ```bash
-    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path go/db/migrations version
+    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path db/migrations version
     ```
 
 -   **新しいマイグレーションファイルを作成する**
     スキーマを変更する際は、以下のコマンドで新しい`up`/`down`ファイルを作成します。
     ```bash
-    migrate create -ext sql -dir go/db/migrations -seq [変更内容の短い説明]
+    migrate create -ext sql -dir db/migrations -seq [変更内容の短い説明]
     ```
-    例: `migrate create -ext sql -dir go/db/migrations -seq add_user_table`
+    例: `migrate create -ext sql -dir db/migrations -seq add_user_table`
 
 -   **`dirty`状態の修正（緊急時）**
     マイグレーションが途中で失敗すると、データベースが`dirty`状態になることがあります。その際は、`force`コマンドで特定のクリーンなバージョンに強制的に設定し直します。
     ```bash
     # 例: バージョン3の状態に強制的に戻す
-    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path go/db/migrations force 3
+    migrate -database "postgres://user:password@localhost:5435/todo_db?sslmode=disable" -path db/migrations force 3
     ```
 
 ### 3. データベースへの直接接続
