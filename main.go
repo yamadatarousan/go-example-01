@@ -46,13 +46,17 @@ func (h *TodoHandler) getTodos(c *gin.Context) error {
 	return nil
 }
 
-func postTodoHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		todos := []string{"Buy groceries", "Walk the dog", "Read a book"}
-		c.JSON(200, gin.H{
-			"todos": todos,
-		})
+func (h *TodoHandler) createTodo(c *gin.Context) error {
+	var newTodo Todo
+	if err := c.ShouldBindJSON(&newTodo); err != nil {
+		return err
 	}
+	todo, err := h.repo.Create(newTodo)
+	if err != nil {
+		return err
+	}
+	c.JSON(http.StatusCreated, todo)
+	return nil
 }
 
 type AppHandler func(c *gin.Context) error
@@ -143,6 +147,6 @@ func main() {
 		})
 	})
 	router.GET("todos", errorHandler(todoHandler.getTodos))
-	router.POST("todos", postTodoHandler())
+	router.POST("todos", errorHandler(todoHandler.createTodo))
 	router.Run()
 }

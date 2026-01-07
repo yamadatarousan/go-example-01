@@ -31,3 +31,16 @@ func (r *TodoRepository) FindAll(userID int) ([]Todo, error) {
 
 	return todos, nil
 }
+
+func (r *TodoRepository) Create(todo Todo) (Todo, error) {
+	var id int
+	err := r.db.QueryRow(
+		"INSERT INTO todos (name, user_id) VALUES ($1, $2) RETURNING id",
+		todo.Name, todo.UserID,
+	).Scan(&id)
+	if err != nil {
+		return todo, err
+	}
+	todo.ID = id
+	return todo, nil
+}
