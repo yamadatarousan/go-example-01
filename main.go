@@ -18,6 +18,24 @@ func requestIDMiddleware() gin.HandlerFunc {
 	}
 }
 
+func getTodoHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		todos := []string{"Buy groceries", "Walk the dog", "Read a book"}
+		c.JSON(200, gin.H{
+			"todos": todos,
+		})
+	}
+}
+
+func postTodoHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		todos := []string{"Buy groceries", "Walk the dog", "Read a book"}
+		c.JSON(200, gin.H{
+			"todos": todos,
+		})
+	}
+}
+
 func main() {
 	router := gin.New()
 	// カスタムログフォーマッタを定義します。
@@ -46,5 +64,7 @@ func main() {
 			"message": "pong",
 		})
 	})
+	router.GET("todos", getTodoHandler())
+	router.POST("todos", postTodoHandler())
 	router.Run()
 }
