@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,7 +37,19 @@ func postTodoHandler() gin.HandlerFunc {
 	}
 }
 
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func initDB() {
+}
+
 func main() {
+	initDB()
+	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
 	// カスタムログフォーマッタを定義します。
 	logFromatter := func(param gin.LogFormatterParams) string {
