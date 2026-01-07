@@ -144,6 +144,24 @@ func initDB() {
 	log.Println("Successfully connected to the database")
 }
 
+type AuthHandler struct {
+	repo *TodoRepository
+}
+
+func NewAuthHandler(repo *TodoRepository) *AuthHandler {
+	return &AuthHandler{repo: repo}
+}
+
+type SignupInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+}
+
+type LoginInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
 func main() {
 	initDB()
 
