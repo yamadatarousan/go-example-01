@@ -162,6 +162,39 @@ type LoginInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type User struct {
+	ID           int       `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"` // Never return password hash
+	Role         string    `json:"role"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func (h *AuthHandler) signup(c *gin.Context) error {
+	var input SignupInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
+	// パスワードのハッシュ化
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	user := User{
+		Email:        input.Email,
+		PasswordHash: string(hashedPassword),
+	}
+
+	createdUser, err := h.repo.CreateUser(user)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"id": createdUser.ID, "email": createdUser.Email, "created_at": createdUser.CreatedAt})
+	return nil
+}
+
 func main() {
 	initDB()
 

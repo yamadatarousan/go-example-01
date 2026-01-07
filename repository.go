@@ -44,3 +44,13 @@ func (r *TodoRepository) Create(todo Todo) (Todo, error) {
 	todo.ID = id
 	return todo, nil
 }
+
+func (r *TodoRepository) CreateUser(user User) (User, error) {
+	err := r.db.QueryRow(
+		"INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, created_at, role",
+		user.Email, user.PasswordHash).Scan(&user.ID, &user.CreatedAt, &user.Role)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
