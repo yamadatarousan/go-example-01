@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -11,6 +12,12 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+type Todo struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name" binding:"required"`
+	UserID int    `json:"user_id"`
+}
 
 func requestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -22,13 +29,21 @@ func requestIDMiddleware() gin.HandlerFunc {
 	}
 }
 
-func getTodoHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		todos := []string{"Buy groceries", "Walk the dog", "Read a book"}
-		c.JSON(200, gin.H{
-			"todos": todos,
-		})
+type TodoHandler struct {
+	repo *TodoRepository
+}
+
+func NewTodoHandler(repo *TodoRepository) *TodoHandler {
+	return &TodoHandler{repo: repo}
+}
+
+func (h *TodoHandler) getTodos(c *gin.Context) error {
+	todos, err := h.repo.FindAll(1)
+	if err != nil {
+		return err
 	}
+	c.JSON(http.StatusOK, todos)
+	return nil
 }
 
 func postTodoHandler() gin.HandlerFunc {
@@ -37,6 +52,21 @@ func postTodoHandler() gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"todos": todos,
 		})
+	}
+}
+
+type AppHandler func(c *gin.Context) error
+
+func errorHandler(handler AppHandler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := handler(c); err != nil {
+			log.Printf("Error occurred: %v", err)
+			// その他の予期せぬエラーの場合
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal Server Error",
+			})
+			return
+		}
 	}
 }
 
@@ -61,7 +91,7 @@ func initDB() {
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
-	db, err := sql.Open("pgx", dsn)
+	db, err = sql.Open("pgx", dsn)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
@@ -77,6 +107,13 @@ func initDB() {
 
 func main() {
 	initDB()
+
+	// --- 依存関係の構築 (DI: Dependency Injection) ---
+	// 1. リポジトリのインスタンスを作成
+	repo := NewTodoRepository(db)
+	// 2. ハンドラのインスタンスを作成し、リポジトリを注入
+	todoHandler := NewTodoHandler(repo)
+
 	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
 	// カスタムログフォーマッタを定義します。
@@ -105,7 +142,7 @@ func main() {
 			"message": "pong",
 		})
 	})
-	router.GET("todos", getTodoHandler())
+	router.GET("todos", errorHandler(todoHandler.getTodos))
 	router.POST("todos", postTodoHandler())
 	router.Run()
 }
