@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,8 +10,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Todo struct {
@@ -65,11 +69,42 @@ func errorHandler(handler AppHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := handler(c); err != nil {
 			log.Printf("Error occurred: %v", err)
+
+			// バリデーションエラーの場合
+			var ve validator.ValidationErrors
+			if errors.As(err, &ve) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "Validation failed",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			// PostgreSQLのユニーク制約違反エラーの場合
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				if pgErr.Code == "23505" { // ユニーク制約違反のエラーコード
+					c.JSON(http.StatusConflict, gin.H{
+						"error":   "Conflict",
+						"details": "Todo with this name already exists",
+					})
+					return
+				}
+			}
+
+			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+				// 認証エラーやデータ未発見エラーの場合
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":   "Unauthorized",
+					"message": "Invalid email or password",
+				})
+				return
+			}
+
 			// その他の予期せぬエラーの場合
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Internal Server Error",
 			})
-			return
 		}
 	}
 }
