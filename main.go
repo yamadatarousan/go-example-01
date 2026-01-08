@@ -49,7 +49,9 @@ func NewTodoHandler(repo *TodoRepository) *TodoHandler {
 }
 
 func (h *TodoHandler) getTodos(c *gin.Context) error {
-	todos, err := h.repo.FindAll(2)
+  claims := c.MustGet("claims").(*AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+	todos, err := h.repo.FindAll(userID)
 	if err != nil {
 		return err
 	}
