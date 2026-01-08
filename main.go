@@ -49,8 +49,8 @@ func NewTodoHandler(repo *TodoRepository) *TodoHandler {
 }
 
 func (h *TodoHandler) getTodos(c *gin.Context) error {
-  claims := c.MustGet("claims").(*AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 	todos, err := h.repo.FindAll(userID)
 	if err != nil {
 		return err
@@ -290,38 +290,38 @@ func authMiddleware() gin.HandlerFunc {
 }
 
 type AdminHandler struct {
-  repo *TodoRepository
+	repo *TodoRepository
 }
 
 func NewAdminHandler(repo *TodoRepository) *AdminHandler {
-  return &AdminHandler{repo: repo}
+	return &AdminHandler{repo: repo}
 }
 
 func adminMiddleware() gin.HandlerFunc {
-  return func(c *gin.Context) {
-    claims, exists := c.Get("claims")
-    if !exists {
-      c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
-      return
-    }
+	return func(c *gin.Context) {
+		claims, exists := c.Get("claims")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
+			return
+		}
 
-    appClaims, ok := claims.(*AppClaims)
-    if !ok || appClaims.Role != "admin" {
-      c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
-      return
-    }
+		appClaims, ok := claims.(*AppClaims)
+		if !ok || appClaims.Role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
+			return
+		}
 
-    c.Next()
-  }
+		c.Next()
+	}
 }
 
 func (h *AdminHandler) getAllUsers(c *gin.Context) error {
-  users, err := h.repo.FindAllUsers()
-  if err != nil {
-    return err
-  }
-  c.JSON(http.StatusOK, users)
-  return nil
+	users, err := h.repo.FindAllUsers()
+	if err != nil {
+		return err
+	}
+	c.JSON(http.StatusOK, users)
+	return nil
 }
 
 func main() {
@@ -336,7 +336,7 @@ func main() {
 	// 2. ハンドラのインスタンスを作成し、リポジトリを注入
 	todoHandler := NewTodoHandler(repo)
 	authHandler := NewAuthHandler(repo)
-  adminHandler := NewAdminHandler(repo)
+	adminHandler := NewAdminHandler(repo)
 
 	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
@@ -382,11 +382,11 @@ func main() {
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
 
-    adminRoutes := v1.Group("/admin")
-    adminRoutes.Use(adminMiddleware())
-    {
-      adminRoutes.GET("/users", errorHandler(adminHandler.getAllUsers))
-    }
+		adminRoutes := v1.Group("/admin")
+		adminRoutes.Use(adminMiddleware())
+		{
+			adminRoutes.GET("/users", errorHandler(adminHandler.getAllUsers))
+		}
 	}
 
 	// --- Graceful Shutdownの実装 ---

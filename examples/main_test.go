@@ -30,7 +30,7 @@ func TestJWTCreationAndValidation(t *testing.T) {
 	}
 
 	// --- 3. 生成したトークン文字列を検証・解析 ---
-	parsedToken, err := jwt.ParseWithClaims(tokenString, &AppClaims{}, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(tokenString, &AppClaims{}, func(token *jwt.Token) (any, error) {
 		return jwtSecret, nil
 	})
 
