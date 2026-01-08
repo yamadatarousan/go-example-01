@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -170,6 +171,13 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+var jwtSecret []byte
+
+type AppClaims struct {
+	Role string `json:"role"`
+	jwt.RegisteredClaims
+}
+
 func (h *AuthHandler) signup(c *gin.Context) error {
 	var input SignupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -195,7 +203,46 @@ func (h *AuthHandler) signup(c *gin.Context) error {
 	return nil
 }
 
+func (h *AuthHandler) login(c *gin.Context) error {
+	var input LoginInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
+
+	user, err := h.repo.FindUserByEmail(input.Email)
+	if err != nil {
+		return err
+	}
+
+	// パスワードの検証
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if err != nil {
+		return err
+	}
+
+	// JWTトークンの生成
+	claims := AppClaims{
+		Role: user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   fmt.Sprintf("%d", user.ID),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": tokenString})
+	return nil
+}
+
 func main() {
+	// JWT秘密鍵を環境変数から読み取る
+	jwtSecret = []byte(getEnv("JWT_SECRET", "a-very-secret-key"))
+
 	initDB()
 
 	// --- 依存関係の構築 (DI: Dependency Injection) ---
@@ -203,6 +250,7 @@ func main() {
 	repo := NewTodoRepository(db)
 	// 2. ハンドラのインスタンスを作成し、リポジトリを注入
 	todoHandler := NewTodoHandler(repo)
+	authHandler := NewAuthHandler(repo)
 
 	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
@@ -232,7 +280,9 @@ func main() {
 			"message": "pong",
 		})
 	})
-	router.GET("todos", errorHandler(todoHandler.getTodos))
-	router.POST("todos", errorHandler(todoHandler.createTodo))
+	router.POST("/signup", errorHandler(authHandler.signup))
+	router.POST("/login", errorHandler(authHandler.login))
+	router.GET("/todos", errorHandler(todoHandler.getTodos))
+	router.POST("/todos", errorHandler(todoHandler.createTodo))
 	router.Run()
 }

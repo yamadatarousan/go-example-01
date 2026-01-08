@@ -54,3 +54,12 @@ func (r *TodoRepository) CreateUser(user User) (User, error) {
 	}
 	return user, nil
 }
+
+func (r *TodoRepository) FindUserByEmail(email string) (User, error) {
+	var user User
+	err := r.db.QueryRow("SELECT id, email, password_hash, created_at, role FROM users WHERE email = $1", email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.Role)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
