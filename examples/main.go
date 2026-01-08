@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-  "github.com/gin-contrib/cors"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
@@ -333,11 +333,11 @@ func main() {
 
 	router := gin.New()
 
-  config := cors.DefaultConfig()
-  config.AllowOrigins = []string{"http://localhost:3000"}
-  config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-  config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
-  router.Use(cors.New(config))
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	router.Use(cors.New(config))
 
 	logFormatter := func(param gin.LogFormatterParams) string {
 		requestID := param.Keys["RequestID"]
