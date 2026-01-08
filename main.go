@@ -270,6 +270,7 @@ func authMiddleware() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(*AppClaims); ok && token.Valid {
 			c.Set("claims", claims)
+			log.Println("Authenticated user ID:", claims.Subject, "Role:", claims.Role)
 			c.Next()
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
