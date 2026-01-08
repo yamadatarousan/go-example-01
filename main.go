@@ -320,7 +320,14 @@ func main() {
 	})
 	router.POST("/signup", errorHandler(authHandler.signup))
 	router.POST("/login", errorHandler(authHandler.login))
-	router.GET("/todos", errorHandler(todoHandler.getTodos))
-	router.POST("/todos", errorHandler(todoHandler.createTodo))
+
+	v1 := router.Group("/api/v1")
+	v1.Use(authMiddleware())
+	{
+		v1.GET("/todos", errorHandler(todoHandler.getTodos))
+		v1.POST("/todos", errorHandler(todoHandler.createTodo))
+	}
+
+	// サーバーをポート8080で起動
 	router.Run()
 }
