@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -48,7 +49,7 @@ func NewTodoHandler(repo *TodoRepository) *TodoHandler {
 }
 
 func (h *TodoHandler) getTodos(c *gin.Context) error {
-	todos, err := h.repo.FindAll(1)
+	todos, err := h.repo.FindAll(2)
 	if err != nil {
 		return err
 	}
@@ -61,11 +62,15 @@ func (h *TodoHandler) createTodo(c *gin.Context) error {
 	if err := c.ShouldBindJSON(&newTodo); err != nil {
 		return err
 	}
-	todo, err := h.repo.Create(newTodo)
+
+	claims := c.MustGet("claims").(*AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+	newTodo.UserID = userID
+	createdTodo, err := h.repo.CreateTodoWithAudit(c.Request.Context(), newTodo)
 	if err != nil {
 		return err
 	}
-	c.JSON(http.StatusCreated, todo)
+	c.JSON(http.StatusCreated, createdTodo)
 	return nil
 }
 
