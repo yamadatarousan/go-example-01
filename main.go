@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
@@ -293,6 +294,13 @@ func main() {
 
 	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Authorization", "Content-Type"}
+	router.Use(cors.New(config))
+
 	// カスタムログフォーマッタを定義します。
 	logFromatter := func(param gin.LogFormatterParams) string {
 		requestID := param.Keys["RequestID"]
