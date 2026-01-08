@@ -118,3 +118,21 @@ func (r *TodoRepository) CreateTodoWithAudit(ctx context.Context, todo Todo) (To
 
 	return createdTodo, err
 }
+
+func (r *TodoRepository) FindAllUsers()([]User, error) {
+  rows, err := r.db.Query("SELECT id, email, created_at, role FROM users")
+  if err != nil {
+    return nil, err
+  }
+  defer rows.Close()
+
+  var users []User
+  for rows.Next() {
+    var u User
+    if err := rows.Scan(&u.ID, &u.Email, &u.CreatedAt, &u.Role); err != nil {
+      return nil, err
+    }
+    users = append(users, u)
+  }
+  return users, nil
+}

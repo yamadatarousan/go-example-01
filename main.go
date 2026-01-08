@@ -289,6 +289,41 @@ func authMiddleware() gin.HandlerFunc {
 	}
 }
 
+type AdminHandler struct {
+  repo *TodoRepository
+}
+
+func NewAdminHandler(repo *TodoRepository) *AdminHandler {
+  return &AdminHandler{repo: repo}
+}
+
+func adminMiddleware() gin.HandlerFunc {
+  return func(c *gin.Context) {
+    claims, exists := c.Get("claims")
+    if !exists {
+      c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
+      return
+    }
+
+    appClaims, ok := claims.(*AppClaims)
+    if !ok || appClaims.Role != "admin" {
+      c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden", "message": "Not an admin"})
+      return
+    }
+
+    c.Next()
+  }
+}
+
+func (h *AdminHandler) getAllUsers(c *gin.Context) error {
+  users, err := h.repo.FindAllUsers()
+  if err != nil {
+    return err
+  }
+  c.JSON(http.StatusOK, users)
+  return nil
+}
+
 func main() {
 	// JWT秘密鍵を環境変数から読み取る
 	jwtSecret = []byte(getEnv("JWT_SECRET", "a-very-secret-key"))
@@ -301,6 +336,7 @@ func main() {
 	// 2. ハンドラのインスタンスを作成し、リポジトリを注入
 	todoHandler := NewTodoHandler(repo)
 	authHandler := NewAuthHandler(repo)
+  adminHandler := NewAdminHandler(repo)
 
 	// Ginのモードを設定します。デフォルトは "debug" モードです。
 	router := gin.New()
@@ -345,6 +381,12 @@ func main() {
 	{
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
+
+    adminRoutes := v1.Group("/admin")
+    adminRoutes.Use(adminMiddleware())
+    {
+      adminRoutes.GET("/users", errorHandler(adminHandler.getAllUsers))
+    }
 	}
 
 	// --- Graceful Shutdownの実装 ---
