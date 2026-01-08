@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -337,6 +340,37 @@ func main() {
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
 	}
 
-	// サーバーをポート8080で起動
-	router.Run()
+	// --- Graceful Shutdownの実装 ---
+
+	// 1. http.Serverを独自に設定
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
+
+	// 2. サーバーをゴルーチンで起動（非同期処理）
+	// これにより、サーバーの起動をブロックせずに、後続のシャットダウン処理に進むことができる
+	go func() {
+		log.Println("Starting server at port 8080")
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// 3. 終了シグナルを待機するためのチャネルを作成
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // SIGINT (Ctrl+C) と SIGTERM を監視
+	<-quit                                               // シグナルを待機
+
+	log.Println("Shutting down server...")
+
+	// 4. サーバーをシャットダウンするためのコンテキストを作成（ここでは5秒のタイムアウトを設定）
+	// 5秒以内に既存のリクエストの処理が終わらなければ、強制的に終了する
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exiting")
 }
