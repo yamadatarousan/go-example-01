@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -117,32 +118,143 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	return router
 }
 
-// TestUserFlowは、TestMainで準備されたテスト用DBを使って実行される
-func TestUserFlow(t *testing.T) {
-	// グローバルなtestDB接続を使ってルーターをセットアップ
+// TestSignupは新規ユーザー登録のテストです
+func TestSignup(t *testing.T) {
 	router := setupTestRouter(testDB)
 
-	// --- 1. ログイン ---
-	// TestMainでseed.sqlがロードされているため、既存のユーザーを使用
+	signupBody := `{"email": "newuser@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/signup", bytes.NewBufferString(signupBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NotEmpty(t, response["id"])
+	assert.Equal(t, "newuser@example.com", response["email"])
+}
+
+// TestLoginは既存ユーザーのログインテストです
+func TestLogin(t *testing.T) {
+	router := setupTestRouter(testDB)
+
 	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-	var loginResponse map[string]string
-	json.Unmarshal(w.Body.Bytes(), &loginResponse)
-	token := loginResponse["token"]
-	assert.NotEmpty(t, token)
 
-	// --- 3. TODO作成 ---
-	todoBody := `{"name": "Isolated Test Todo"}`
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response map[string]string
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NotEmpty(t, response["token"])
+}
+
+// TestLoginInvalidCredentialsは誤った認証情報でのログインテストです
+func TestLoginInvalidCredentials(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	loginBody := `{"email": "user-test@example.com", "password": "wrongpassword"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// TestCreateTodoはTODO作成のテストです
+func TestCreateTodo(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAsUser(t, router, "user-test@example.com", "password123")
+
+	todoBody := `{"name": "New Test Todo"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	router.ServeHTTP(w, req)
+
 	assert.Equal(t, http.StatusCreated, w.Code)
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NotEmpty(t, response["id"])
+	assert.Equal(t, "New Test Todo", response["name"])
+}
+
+// TestGetTodosはTODO一覧取得のテストです
+func TestGetTodos(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAsUser(t, router, "user-test@example.com", "password123")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/todos", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var todos []map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &todos)
+	// シードデータで1つのTODOが作成されているはず
+	assert.GreaterOrEqual(t, len(todos), 1)
+}
+
+// TestGetTodosUnauthorizedは認証なしでのTODO一覧取得テストです
+func TestGetTodosUnauthorized(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/todos", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// TestAdminGetAllUsersは管理者による全ユーザー取得のテストです
+func TestAdminGetAllUsers(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAsUser(t, router, "admin-test@example.com", "password123")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/admin/users", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var users []map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &users)
+	// シードデータで2人のユーザーが作成されているはず
+	assert.GreaterOrEqual(t, len(users), 2)
+}
+
+// TestAdminGetAllUsersForbiddenは一般ユーザーが管理者エンドポイントにアクセスするテストです
+func TestAdminGetAllUsersForbidden(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAsUser(t, router, "user-test@example.com", "password123")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/admin/users", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+// loginAsUserはテスト用のヘルパー関数で、指定されたユーザーでログインしてトークンを返します
+func loginAsUser(t *testing.T, router *gin.Engine, email, password string) string {
+	loginBody := fmt.Sprintf(`{"email": "%s", "password": "%s"}`, email, password)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response map[string]string
+	json.Unmarshal(w.Body.Bytes(), &response)
+	token := response["token"]
+	assert.NotEmpty(t, token)
+	return token
 }
 
 // loadSeedDataはseed.sqlを読み込み、テストDBに適用します。
