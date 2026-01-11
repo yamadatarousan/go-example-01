@@ -149,3 +149,44 @@ func (r *TodoRepository) FindByID(todoID, userID int) (Todo, error) {
 	}
 	return todo, nil
 }
+
+// updateTodoInTxはトランザクション内でTODOを更新し、監査ログを作成します
+func (r *TodoRepository) updateTodoInTx(tx *sql.Tx, todo Todo) (Todo, error) {
+	// 1. todosテーブルのレコードを更新
+	result, err := tx.Exec(
+		"UPDATE todos SET name = $1 WHERE id = $2 AND user_id = $3",
+		todo.Name, todo.ID, todo.UserID,
+	)
+	if err != nil {
+		return todo, err
+	}
+
+	// 更新された行数を確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return todo, err
+	}
+	if rowsAffected == 0 {
+		return todo, sql.ErrNoRows
+	}
+
+	// 2. todo_audit_logsテーブルに監査ログを挿入
+	_, err = tx.Exec("INSERT INTO todo_audit_logs (todo_id, operation) VALUES ($1, $2)", todo.ID, "update")
+	if err != nil {
+		return todo, err
+	}
+
+	return todo, nil
+}
+
+// UpdateTodoWithAuditはトランザクションを使用してTODOを更新します
+func (r *TodoRepository) UpdateTodoWithAudit(ctx context.Context, todo Todo) (Todo, error) {
+	var updatedTodo Todo
+	err := r.execTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		updatedTodo, err = r.updateTodoInTx(tx, todo)
+		return err
+	})
+
+	return updatedTodo, err
+}
