@@ -109,6 +109,7 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	v1.Use(authMiddleware())
 	{
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
+		v1.GET("/todos/:id", errorHandler(todoHandler.getTodo))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
 		v1.PUT("/todos/:id", errorHandler(todoHandler.updateTodo))
 		v1.DELETE("/todos/:id", errorHandler(todoHandler.deleteTodo))
@@ -148,6 +149,68 @@ func TestUserFlow(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
+// TestGetTodoは個別TODO取得のテストです
+func TestGetTodo(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// TODO作成
+	createBody := `{"name": "Test Todo for Get"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(createBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var createResponse map[string]any
+	json.Unmarshal(w.Body.Bytes(), &createResponse)
+	todoID := int(createResponse["id"].(float64))
+
+	// 個別TODO取得
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", fmt.Sprintf("/api/v1/todos/%d", todoID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var getResponse map[string]any
+	json.Unmarshal(w.Body.Bytes(), &getResponse)
+	assert.Equal(t, "Test Todo for Get", getResponse["name"])
+	assert.Equal(t, float64(todoID), getResponse["id"])
+}
+
+// TestGetTodoNotFoundは存在しないTODOの取得テストです
+func TestGetTodoNotFound(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// 存在しないTODO IDで取得を試みる
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/todos/99999", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 // TestUpdateTodoはTODO更新のテストです
