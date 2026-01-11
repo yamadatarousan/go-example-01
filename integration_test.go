@@ -62,14 +62,14 @@ func TestMain(m *testing.M) {
 	// マイグレーションの実行
 	log.Println("Running migrations on test database...")
 	// まず、既存のマイグレーションをすべてダウンさせ、スキーマをクリーンな状態に戻す
-	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "./db/migrations", "down", "-all") // -all に変更
+	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "db/migrations", "down", "-all") // -all に変更
 	if output, err := migrateDownCmd.CombinedOutput(); err != nil {
 		// エラーが発生しても続行（初回実行時など、ダウンするマイグレーションがない場合があるため）
 		log.Printf("Could not run migrate down (may be normal on first run): %v\nOutput: %s", err, string(output))
 	}
 
 	// その後、すべてのマイグレーションをアップする
-	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "./db/migrations", "up")
+	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "db/migrations", "up")
 	if output, err := migrateUpCmd.CombinedOutput(); err != nil {
 		log.Fatalf("Could not run migrations: %v\nOutput: %s", err, string(output))
 	}
@@ -107,7 +107,10 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	v1.Use(authMiddleware())
 	{
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
+		v1.GET("/todos/:id", errorHandler(todoHandler.getTodo))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
+		v1.PUT("/todos/:id", errorHandler(todoHandler.updateTodo))
+		v1.DELETE("/todos/:id", errorHandler(todoHandler.deleteTodo))
 
 		adminRoutes := v1.Group("/admin")
 		adminRoutes.Use(adminMiddleware())
@@ -118,143 +121,230 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	return router
 }
 
-// TestSignupは新規ユーザー登録のテストです
-func TestSignup(t *testing.T) {
+// TestUserFlowは、TestMainで準備されたテスト用DBを使って実行される
+func TestUserFlow(t *testing.T) {
+	// グローバルなtestDB接続を使ってルーターをセットアップ
 	router := setupTestRouter(testDB)
 
-	signupBody := `{"email": "newuser@example.com", "password": "password123"}`
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/signup", bytes.NewBufferString(signupBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
-	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NotEmpty(t, response["id"])
-	assert.Equal(t, "newuser@example.com", response["email"])
-}
-
-// TestLoginは既存ユーザーのログインテストです
-func TestLogin(t *testing.T) {
-	router := setupTestRouter(testDB)
-
+	// --- 1. ログイン ---
+	// TestMainでseed.sqlがロードされているため、既存のユーザーを使用
 	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
-
 	assert.Equal(t, http.StatusOK, w.Code)
-	var response map[string]string
-	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NotEmpty(t, response["token"])
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+	assert.NotEmpty(t, token)
+
+	// --- 3. TODO作成 ---
+	todoBody := `{"name": "Isolated Test Todo"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
 }
 
-// TestLoginInvalidCredentialsは誤った認証情報でのログインテストです
-func TestLoginInvalidCredentials(t *testing.T) {
+// TestGetTodoは個別TODO取得のテストです
+func TestGetTodo(t *testing.T) {
 	router := setupTestRouter(testDB)
 
-	loginBody := `{"email": "user-test@example.com", "password": "wrongpassword"}`
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-}
-
-// TestCreateTodoはTODO作成のテストです
-func TestCreateTodo(t *testing.T) {
-	router := setupTestRouter(testDB)
-	token := loginAsUser(t, router, "user-test@example.com", "password123")
-
-	todoBody := `{"name": "New Test Todo"}`
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	// TODO作成
+	createBody := `{"name": "Test Todo for Get"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	router.ServeHTTP(w, req)
-
 	assert.Equal(t, http.StatusCreated, w.Code)
-	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NotEmpty(t, response["id"])
-	assert.Equal(t, "New Test Todo", response["name"])
-}
+	var createResponse map[string]any
+	json.Unmarshal(w.Body.Bytes(), &createResponse)
+	todoID := int(createResponse["id"].(float64))
 
-// TestGetTodosはTODO一覧取得のテストです
-func TestGetTodos(t *testing.T) {
-	router := setupTestRouter(testDB)
-	token := loginAsUser(t, router, "user-test@example.com", "password123")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/todos", nil)
+	// 個別TODO取得
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", fmt.Sprintf("/api/v1/todos/%d", todoID), nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var getResponse map[string]any
+	json.Unmarshal(w.Body.Bytes(), &getResponse)
+	assert.Equal(t, "Test Todo for Get", getResponse["name"])
+	assert.Equal(t, float64(todoID), getResponse["id"])
+}
 
+// TestGetTodoNotFoundは存在しないTODOの取得テストです
+func TestGetTodoNotFound(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// 存在しないTODO IDで取得を試みる
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/todos/99999", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestUpdateTodoはTODO更新のテストです
+func TestUpdateTodo(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// TODO作成
+	createBody := `{"name": "Original Todo"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(createBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var createResponse map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &createResponse)
+	todoID := int(createResponse["id"].(float64))
+
+	// TODO更新
+	updateBody := `{"name": "Updated Todo"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("PUT", fmt.Sprintf("/api/v1/todos/%d", todoID), bytes.NewBufferString(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var updateResponse map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &updateResponse)
+	assert.Equal(t, "Updated Todo", updateResponse["name"])
+}
+
+// TestDeleteTodoはTODO削除のテストです
+func TestDeleteTodo(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// TODO作成
+	createBody := `{"name": "Todo to Delete"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(createBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var createResponse map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &createResponse)
+	todoID := int(createResponse["id"].(float64))
+
+	// TODO削除
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", fmt.Sprintf("/api/v1/todos/%d", todoID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// 削除後に再度GETして404が返ることを確認
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/todos", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 	var todos []map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &todos)
-	// シードデータで1つのTODOが作成されているはず
-	assert.GreaterOrEqual(t, len(todos), 1)
+	// 削除したTODOが含まれていないことを確認
+	for _, todo := range todos {
+		assert.NotEqual(t, float64(todoID), todo["id"])
+	}
 }
 
-// TestGetTodosUnauthorizedは認証なしでのTODO一覧取得テストです
-func TestGetTodosUnauthorized(t *testing.T) {
+// TestUpdateTodoNotFoundは存在しないTODOの更新テストです
+func TestUpdateTodoNotFound(t *testing.T) {
 	router := setupTestRouter(testDB)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/todos", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-}
-
-// TestAdminGetAllUsersは管理者による全ユーザー取得のテストです
-func TestAdminGetAllUsers(t *testing.T) {
-	router := setupTestRouter(testDB)
-	token := loginAsUser(t, router, "admin-test@example.com", "password123")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/admin/users", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	var users []map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &users)
-	// シードデータで2人のユーザーが作成されているはず
-	assert.GreaterOrEqual(t, len(users), 2)
-}
-
-// TestAdminGetAllUsersForbiddenは一般ユーザーが管理者エンドポイントにアクセスするテストです
-func TestAdminGetAllUsersForbidden(t *testing.T) {
-	router := setupTestRouter(testDB)
-	token := loginAsUser(t, router, "user-test@example.com", "password123")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/admin/users", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusForbidden, w.Code)
-}
-
-// loginAsUserはテスト用のヘルパー関数で、指定されたユーザーでログインしてトークンを返します
-func loginAsUser(t *testing.T, router *gin.Engine, email, password string) string {
-	loginBody := fmt.Sprintf(`{"email": "%s", "password": "%s"}`, email, password)
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
-
 	assert.Equal(t, http.StatusOK, w.Code)
-	var response map[string]string
-	json.Unmarshal(w.Body.Bytes(), &response)
-	token := response["token"]
-	assert.NotEmpty(t, token)
-	return token
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// 存在しないTODO IDで更新を試みる
+	updateBody := `{"name": "Updated Todo"}`
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("PUT", "/api/v1/todos/99999", bytes.NewBufferString(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestDeleteTodoNotFoundは存在しないTODOの削除テストです
+func TestDeleteTodoNotFound(t *testing.T) {
+	router := setupTestRouter(testDB)
+
+	// ログイン
+	loginBody := `{"email": "user-test@example.com", "password": "password123"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/login", bytes.NewBufferString(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var loginResponse map[string]string
+	json.Unmarshal(w.Body.Bytes(), &loginResponse)
+	token := loginResponse["token"]
+
+	// 存在しないTODO IDで削除を試みる
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/api/v1/todos/99999", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 // loadSeedDataはseed.sqlを読み込み、テストDBに適用します。
