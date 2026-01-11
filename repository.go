@@ -190,3 +190,36 @@ func (r *TodoRepository) UpdateTodoWithAudit(ctx context.Context, todo Todo) (To
 
 	return updatedTodo, err
 }
+
+// deleteTodoInTxはトランザクション内でTODOを削除し、監査ログを作成します
+func (r *TodoRepository) deleteTodoInTx(tx *sql.Tx, todoID, userID int) error {
+	// 1. 監査ログを先に挿入（TODOが削除される前に）
+	_, err := tx.Exec("INSERT INTO todo_audit_logs (todo_id, operation) VALUES ($1, $2)", todoID, "delete")
+	if err != nil {
+		return err
+	}
+
+	// 2. todosテーブルからレコードを削除
+	result, err := tx.Exec("DELETE FROM todos WHERE id = $1 AND user_id = $2", todoID, userID)
+	if err != nil {
+		return err
+	}
+
+	// 削除された行数を確認
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// DeleteTodoWithAuditはトランザクションを使用してTODOを削除します
+func (r *TodoRepository) DeleteTodoWithAudit(ctx context.Context, todoID, userID int) error {
+	return r.execTx(ctx, func(tx *sql.Tx) error {
+		return r.deleteTodoInTx(tx, todoID, userID)
+	})
+}
