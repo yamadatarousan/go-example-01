@@ -52,6 +52,193 @@ go-example-01/
 
 ---
 
+## 🏗️ アーキテクチャ設計
+
+### レイヤードアーキテクチャとは
+
+レイヤードアーキテクチャ（Layered Architecture）は、アプリケーションを複数の層（レイヤー）に分割し、各層が明確な責務を持つ設計パターンです。各レイヤーは下位レイヤーにのみ依存し、上位レイヤーには依存しないという**単方向の依存関係**を持ちます。
+
+#### 基本原則
+
+1. **関心の分離（Separation of Concerns）**: 各レイヤーは特定の責務のみを担当
+2. **依存関係の方向**: 上位レイヤー → 下位レイヤーの単方向依存
+3. **抽象化**: インターフェースを通じて層間を疎結合に保つ
+4. **置き換え可能性**: 各レイヤーの実装を独立して変更可能
+
+### 本アプリケーションのレイヤー構成
+
+このプロジェクトでは、以下の4層構造を採用しています：
+
+```
+┌─────────────────────────────────────┐
+│   Handler層（プレゼンテーション層）  │  ← HTTPリクエスト/レスポンス処理
+├─────────────────────────────────────┤
+│   Service層（ビジネスロジック層）    │  ← ビジネスルール、トランザクション制御
+├─────────────────────────────────────┤
+│   Repository層（データアクセス層）   │  ← データベース操作の抽象化
+├─────────────────────────────────────┤
+│   Domain層（ドメインモデル層）       │  ← エンティティ、ドメインルール
+└─────────────────────────────────────┘
+```
+
+#### 各レイヤーの責務
+
+**1. Domain層（最下層）**
+- **役割**: ビジネスの核となるエンティティとルールを定義
+- **内容**:
+  - エンティティ（Todo, User）
+  - ドメイン固有のエラー定義（ErrNotFound, ErrUnauthorizedなど）
+  - 入力検証用の構造体（SignupInput, LoginInput）
+- **依存**: なし（他のレイヤーに依存しない）
+- **例**: `domain/todo.go`, `domain/user.go`, `domain/errors.go`
+
+**2. Repository層**
+- **役割**: データの永続化と取得を抽象化
+- **内容**:
+  - データベース操作のインターフェース定義
+  - SQLクエリの実行
+  - トランザクション管理
+- **依存**: Domain層のみ
+- **例**: `repository/todo_repository.go`, `repository/user_repository.go`
+
+**3. Service層**
+- **役割**: ビジネスロジックの実装
+- **内容**:
+  - 複数のRepositoryを組み合わせた処理
+  - 認証・認可のロジック（JWT生成、パスワード検証）
+  - トランザクションの制御
+- **依存**: Domain層、Repository層のインターフェース
+- **例**: `service/auth_service.go`, `service/todo_service.go`
+
+**4. Handler層（最上層）**
+- **役割**: HTTPリクエストとレスポンスの処理
+- **内容**:
+  - リクエストのバインディング（JSON → 構造体）
+  - Serviceの呼び出し
+  - レスポンスの生成（構造体 → JSON）
+  - HTTPステータスコードの設定
+- **依存**: Service層、Domain層
+- **例**: `handler/todo_handler.go`, `handler/user_handler.go`
+
+#### 依存関係の流れ（例: TODO作成）
+
+```
+HTTPリクエスト
+    ↓
+Handler層: todoHandler.CreateTodo()
+    ↓ （Serviceを呼び出し）
+Service層: todoService.CreateTodo()
+    ↓ （Repositoryを呼び出し）
+Repository層: todoRepo.CreateTodoWithAudit()
+    ↓ （データベース操作）
+PostgreSQL
+    ↓
+レスポンスを逆順に返却
+```
+
+### レイヤードアーキテクチャの採用理由
+
+#### 1. **保守性の向上**
+- **問題**: 単一ファイル（main.go 516行）では、コードの場所を見つけにくい
+- **解決**: 各レイヤーごとにファイルを分割し、責務が明確化
+- **効果**: バグ修正や機能追加時に、影響範囲を特定しやすい
+
+#### 2. **テスタビリティの向上**
+- **問題**: データベースに依存したテストは遅く、セットアップが複雑
+- **解決**: インターフェースを使うことで、モック実装に差し替え可能
+- **効果**:
+  - Serviceのユニットテストでは、RepositoryをモックDB で代替
+  - Handlerのユニットテストでは、Serviceをモックで代替
+
+```go
+// テスト例: Serviceのユニットテスト
+mockRepo := &MockTodoRepository{
+    FindAllFunc: func(userID int) ([]domain.Todo, error) {
+        return []domain.Todo{{ID: 1, Name: "Test"}}, nil
+    },
+}
+service := service.NewTodoService(mockRepo)
+// serviceのテストを実行
+```
+
+#### 3. **拡張性の確保**
+- **問題**: 新機能追加時に既存コードへの影響が大きい
+- **解決**: 各レイヤーが疎結合なため、影響を局所化
+- **効果**:
+  - 新しいエンドポイント追加 → Handlerのみ追加
+  - ビジネスロジック変更 → Serviceのみ修正
+  - データベース変更 → Repositoryのみ修正
+
+#### 4. **チーム開発の効率化**
+- **問題**: 複数人が同じファイルを編集すると競合が発生
+- **解決**: レイヤーごと、機能ごとにファイルが分かれる
+- **効果**:
+  - フロントエンド担当 → Handler層を編集
+  - ビジネスロジック担当 → Service層を編集
+  - DB担当 → Repository層を編集
+  - マージ競合が減少
+
+#### 5. **技術的な置き換えが容易**
+- **問題**: 将来的にデータベースやフレームワークを変更したい
+- **解決**: インターフェースで抽象化されているため、実装の差し替えが可能
+- **効果**:
+  - PostgreSQL → MySQL に変更 → Repository層のみ修正
+  - Gin → Echo に変更 → Handler層のみ修正
+  - Service層、Domain層は影響を受けない
+
+#### 6. **ビジネスロジックの再利用**
+- **問題**: HTTPエンドポイント以外（CLI、gRPC、バッチ処理）でも同じロジックを使いたい
+- **解決**: Service層がHTTPに依存しないため、どこからでも呼び出し可能
+- **効果**:
+  - REST API、gRPC、CLI ツールで同じServiceを共有
+  - ビジネスロジックの重複を防ぐ
+
+### 実装上の工夫
+
+#### 依存性注入（DI: Dependency Injection）
+
+各レイヤーは、必要な依存関係をコンストラクタで受け取ります。
+
+```go
+// Repository層の作成
+todoRepo := repository.NewTodoRepository(db)
+userRepo := repository.NewUserRepository(db)
+
+// Service層の作成（Repositoryを注入）
+authService := service.NewAuthService(userRepo, jwtSecret)
+todoService := service.NewTodoService(todoRepo)
+
+// Handler層の作成（Serviceを注入）
+userHandler := handler.NewUserHandler(authService)
+todoHandler := handler.NewTodoHandler(todoService)
+```
+
+この設計により、各レイヤーは具体的な実装ではなく、インターフェースに依存します（依存性逆転の原則：DIP）。
+
+#### インターフェースの活用
+
+Repository層はインターフェースとして定義されています。
+
+```go
+// インターフェース定義
+type TodoRepository interface {
+    FindAll(userID int) ([]domain.Todo, error)
+    CreateTodoWithAudit(ctx context.Context, todo domain.Todo) (domain.Todo, error)
+    // ...
+}
+
+// 実装（PostgreSQL版）
+type todoRepository struct {
+    db *sql.DB
+}
+
+// 将来的にはMySQL版、MongoDB版なども作成可能
+```
+
+これにより、Service層は「どのデータベースを使うか」を知る必要がありません。
+
+---
+
 ## 📈 拡張ロードマップ
 
 ### Phase 1: コード構造のリファクタリング（Week 1-2）
