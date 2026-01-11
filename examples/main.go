@@ -183,6 +183,68 @@ func (h *TodoHandler) createTodo(c *gin.Context) error {
 	return nil
 }
 
+func (h *TodoHandler) updateTodo(c *gin.Context) error {
+	// URLパラメータからTODO IDを取得
+	todoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
+		return nil
+	}
+
+	// リクエストボディから更新内容を取得
+	var updateTodo Todo
+	if err := c.BindJSON(&updateTodo); err != nil {
+		return err
+	}
+
+	// ログインユーザーのIDを取得
+	claims := c.MustGet("claims").(*AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	// 更新対象のTODOを設定
+	updateTodo.ID = todoID
+	updateTodo.UserID = userID
+
+	// TODOを更新
+	updatedTodo, err := h.repo.UpdateTodoWithAudit(c.Request.Context(), updateTodo)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+			return nil
+		}
+		return err
+	}
+
+	c.JSON(http.StatusOK, updatedTodo)
+	return nil
+}
+
+func (h *TodoHandler) deleteTodo(c *gin.Context) error {
+	// URLパラメータからTODO IDを取得
+	todoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
+		return nil
+	}
+
+	// ログインユーザーのIDを取得
+	claims := c.MustGet("claims").(*AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	// TODOを削除
+	err = h.repo.DeleteTodoWithAudit(c.Request.Context(), todoID, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+			return nil
+		}
+		return err
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Todo deleted successfully"})
+	return nil
+}
+
 type AuthHandler struct {
 	repo *TodoRepository
 }
@@ -371,6 +433,8 @@ func main() {
 	{
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
+		v1.PUT("/todos/:id", errorHandler(todoHandler.updateTodo))
+		v1.DELETE("/todos/:id", errorHandler(todoHandler.deleteTodo))
 
 		adminRoutes := v1.Group("/admin")
 		adminRoutes.Use(adminMiddleware())
