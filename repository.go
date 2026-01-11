@@ -136,3 +136,16 @@ func (r *TodoRepository) FindAllUsers() ([]User, error) {
 	}
 	return users, nil
 }
+
+// FindByIDは指定されたIDのTODOを取得します
+func (r *TodoRepository) FindByID(todoID, userID int) (Todo, error) {
+	var todo Todo
+	err := r.db.QueryRow(
+		"SELECT id, name, user_id FROM todos WHERE id = $1 AND user_id = $2",
+		todoID, userID,
+	).Scan(&todo.ID, &todo.Name, &todo.UserID)
+	if err != nil {
+		return todo, err
+	}
+	return todo, nil
+}

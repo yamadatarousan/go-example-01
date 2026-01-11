@@ -324,6 +324,32 @@ func (h *AdminHandler) getAllUsers(c *gin.Context) error {
 	return nil
 }
 
+func (h *TodoHandler) getTodo(c *gin.Context) error {
+	// URLパラメータからTODO IDを取得
+	todoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
+		return nil
+	}
+
+	// ログインユーザーのIDを取得
+	claims := c.MustGet("claims").(*AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	// TODOを取得
+	todo, err := h.repo.FindByID(todoID, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+			return nil
+		}
+		return err
+	}
+
+	c.JSON(http.StatusOK, todo)
+	return nil
+}
+
 func main() {
 	// JWT秘密鍵を環境変数から読み取る
 	jwtSecret = []byte(getEnv("JWT_SECRET", "a-very-secret-key"))
@@ -380,6 +406,7 @@ func main() {
 	v1.Use(authMiddleware())
 	{
 		v1.GET("/todos", errorHandler(todoHandler.getTodos))
+		v1.GET("todos/:id", errorHandler(todoHandler.getTodo))
 		v1.POST("/todos", errorHandler(todoHandler.createTodo))
 
 		adminRoutes := v1.Group("/admin")
