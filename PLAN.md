@@ -111,8 +111,6 @@ go-example-01/
 
 #### 成果物
 - [ ] リファクタリング後のコード
-- [ ] アーキテクチャ図
-- [ ] 移行ガイドドキュメント
 
 ---
 
@@ -433,10 +431,10 @@ CREATE INDEX idx_todos_due_date ON todos(due_date) WHERE due_date IS NOT NULL;
 
 ---
 
-### Phase 7: CI/CD・ドキュメント（Week 11-12）
+### Phase 7: CI/CD自動化（Week 11-12）
 
 #### 目標
-自動化と開発者体験の向上
+自動化されたテスト・デプロイパイプラインの構築
 
 #### タスク
 
@@ -454,26 +452,19 @@ jobs:
       - run: go test -v -coverprofile=coverage.out ./...
 ```
 
-**7.2 OpenAPI仕様書**
-- [ ] Swaggerアノテーションの追加
-- [ ] Swagger UI (`/api/docs`)
-- [ ] Postmanコレクション
-
-**7.3 Docker最適化**
+**7.2 Docker最適化**
 - [ ] マルチステージビルド
 - [ ] docker-compose.yml更新
 - [ ] 本番用Dockerfile
 
-**7.4 ドキュメント整備**
-- [ ] ARCHITECTURE.md
-- [ ] API.md
-- [ ] DEPLOYMENT.md
-- [ ] CONTRIBUTING.md
+**7.3 自動デプロイ**
+- [ ] ステージング環境へのデプロイ設定
+- [ ] 本番環境へのデプロイ設定（手動承認）
+- [ ] ロールバック機能
 
 #### 成果物
 - [ ] CI/CDパイプライン
-- [ ] API仕様書
-- [ ] 包括的なドキュメント
+- [ ] 自動デプロイ環境
 
 ---
 
@@ -485,32 +476,217 @@ Webフロントエンドの実装
 #### タスク
 
 **8.1 技術選定**
-- フレームワーク: React / Next.js
-- 状態管理: Zustand / Redux
-- UIライブラリ: Tailwind CSS
-- HTTP Client: Axios
+- **言語**: TypeScript
+  - 型安全性によるバグの早期発見
+  - IDEの強力な補完・リファクタリング支援
+  - APIレスポンスの型定義
+- **フレームワーク**: React / Next.js
+  - React 18+ (最新機能)
+  - Next.js 14+ (App Router推奨)
+  - Server Components対応
+- **状態管理**: Zustand / Redux Toolkit
+  - Zustand: 軽量でシンプル（推奨）
+  - Redux Toolkit: 大規模アプリ向け
+- **UIライブラリ**: Tailwind CSS + shadcn/ui
+  - Tailwind CSS: ユーティリティファーストCSS
+  - shadcn/ui: 再利用可能なコンポーネント
+- **HTTP Client**: Axios / TanStack Query
+  - Axios: HTTP通信
+  - TanStack Query (React Query): サーバーステート管理
+- **フォーム**: React Hook Form + Zod
+  - React Hook Form: パフォーマンス重視
+  - Zod: TypeScript型安全なバリデーション
+- **テスト**: Vitest + React Testing Library
+  - Vitest: 高速なテストランナー
+  - React Testing Library: コンポーネントテスト
+- **E2Eテスト**: Playwright
+  - クロスブラウザテスト対応
 
-**8.2 主要画面**
-- [ ] ログイン・サインアップ
-- [ ] ダッシュボード
-- [ ] TODO一覧・詳細
+**8.2 プロジェクト構造**
+```
+frontend/
+├── src/
+│   ├── app/                  # Next.js App Router
+│   │   ├── (auth)/          # 認証関連ページ
+│   │   │   ├── login/
+│   │   │   └── signup/
+│   │   ├── dashboard/       # ダッシュボード
+│   │   └── todos/           # TODO関連ページ
+│   ├── components/          # 再利用可能なコンポーネント
+│   │   ├── ui/             # shadcn/uiコンポーネント
+│   │   ├── layouts/        # レイアウトコンポーネント
+│   │   └── features/       # 機能別コンポーネント
+│   ├── lib/                 # ユーティリティ・設定
+│   │   ├── api/            # API通信
+│   │   ├── hooks/          # カスタムフック
+│   │   └── utils/          # ヘルパー関数
+│   ├── types/               # TypeScript型定義
+│   │   ├── api.ts          # APIレスポンス型
+│   │   ├── models.ts       # ドメインモデル型
+│   │   └── index.ts
+│   └── store/               # 状態管理
+└── public/                  # 静的ファイル
+```
+
+**8.3 主要画面**
+- [ ] ログイン画面（React Hook Form + Zod）
+- [ ] サインアップ画面
+- [ ] ダッシュボード（統計情報表示）
+- [ ] TODO一覧（フィルタリング・検索）
+- [ ] TODO詳細・編集（ドラッグ&ドロップ）
 - [ ] プロジェクト管理
-- [ ] 設定画面
+- [ ] 設定画面（プロフィール編集）
 
-**8.3 レスポンシブデザイン**
-- [ ] PC対応
-- [ ] タブレット対応
-- [ ] スマートフォン対応
+**8.4 型定義の実装**
+```typescript
+// types/api.ts
+export interface Todo {
+  id: number;
+  name: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  due_date?: string;
+  user_id: number;
+  category_id?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  bio?: string;
+  image?: string;
+  role: 'user' | 'admin';
+  created_at: string;
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+}
+
+export interface ApiError {
+  error: string;
+  details?: string;
+}
+```
+
+**8.5 API通信の実装**
+- [ ] Axiosインスタンスの設定（JWT自動付与）
+- [ ] API型定義の自動生成（openapi-typescript）
+- [ ] エラーハンドリング
+- [ ] リトライロジック
+- [ ] TanStack Queryでのキャッシング
+
+**8.6 レスポンシブデザイン**
+- [ ] PC対応（1920px以上）
+- [ ] タブレット対応（768px-1919px）
+- [ ] スマートフォン対応（〜767px）
+- [ ] ダークモード対応
+
+**8.7 パフォーマンス最適化**
+- [ ] コード分割（React.lazy, dynamic import）
+- [ ] 画像最適化（Next.js Image）
+- [ ] SSR/SSG活用
+- [ ] バンドルサイズ最適化
 
 #### 成果物
-- [ ] フロントエンドアプリケーション
-- [ ] E2Eテスト
+- [ ] TypeScriptベースのフロントエンドアプリケーション
+- [ ] 型安全なAPI通信層
+- [ ] 再利用可能なコンポーネントライブラリ
+- [ ] ユニットテスト
+- [ ] E2Eテスト（Playwright）
+- [ ] Storybookコンポーネントカタログ（オプション）
+
+---
+
+### Phase 9: ドキュメント作成（Week 17-18）
+
+> **⚠️ 注意**: このフェーズの実施前に、各ドキュメントの必要性を検討します。
+> プロジェクトの規模、用途、チーム構成に応じて、一部またはすべてを省略する可能性があります。
+> 必要性を判断する際の基準：
+> - プロジェクトを他者に公開するか
+> - チーム開発を行うか
+> - 長期的なメンテナンスを想定しているか
+> - コントリビューターを募集するか
+
+#### 目標
+プロジェクトの理解とメンテナンスを容易にするドキュメントの整備
+
+#### タスク
+
+**9.1 アーキテクチャドキュメント**
+- [ ] **ARCHITECTURE.md**: システム設計の説明
+  - レイヤードアーキテクチャの構造
+  - 各レイヤーの責務と依存関係
+  - モジュール間の連携フロー
+  - 主要な設計判断とその理由
+
+**9.2 API仕様書**
+- [ ] **OpenAPI/Swagger仕様**: APIドキュメントの自動生成
+  - Swaggerアノテーションの追加
+  - Swagger UI (`/api/docs`) の実装
+  - 全エンドポイントの仕様記述
+- [ ] **API.md**: API利用ガイド
+  - 認証フロー
+  - エンドポイント一覧
+  - リクエスト/レスポンス例
+  - エラーコード一覧
+- [ ] **Postmanコレクション**: テスト用コレクション
+  - 環境変数設定
+  - 全エンドポイントのテストケース
+
+**9.3 運用ドキュメント**
+- [ ] **DEPLOYMENT.md**: デプロイ手順
+  - 環境構築手順
+  - データベースマイグレーション
+  - 環境変数の設定
+  - デプロイ先の選択肢（Heroku, AWS, GCP等）
+  - トラブルシューティング
+
+**9.4 開発者向けドキュメント**
+- [ ] **CONTRIBUTING.md**: コントリビューションガイド
+  - 開発環境のセットアップ
+  - コーディング規約
+  - プルリクエストの作成方法
+  - コミットメッセージの規約
+  - テストの実行方法
+- [ ] **README.md拡充**: プロジェクト概要の充実
+  - 機能一覧
+  - デモ/スクリーンショット
+  - クイックスタート
+  - 技術スタック
+  - ライセンス情報
+
+**9.5 アーキテクチャ図**
+- [ ] システム全体図（レイヤー構造）
+- [ ] データベースER図
+- [ ] APIエンドポイント図
+- [ ] デプロイ構成図
+
+#### 成果物（このフェーズ実施が決定した場合）
+- [ ] ARCHITECTURE.md
+- [ ] API.md
+- [ ] DEPLOYMENT.md
+- [ ] CONTRIBUTING.md
+- [ ] OpenAPI仕様書
+- [ ] Postmanコレクション
+- [ ] アーキテクチャ図（複数）
+- [ ] 充実したREADME.md
+
+#### このフェーズをスキップする場合
+最低限の以下のドキュメントのみを保持：
+- [ ] README.md（基本的な使い方のみ）
+- [ ] コード内のコメント（重要な処理の説明）
 
 ---
 
 ## 🛠 技術スタックの拡張
 
-### 追加予定の技術
+### バックエンド追加予定の技術
 
 | カテゴリ | 技術 | 用途 |
 |---------|------|------|
@@ -521,6 +697,27 @@ Webフロントエンドの実装
 | **ドキュメント** | swag | OpenAPI/Swagger |
 | **設定管理** | viper | 環境変数 |
 | **タスクキュー** | asynq | バックグラウンドジョブ |
+
+### フロントエンド技術スタック
+
+| カテゴリ | 技術 | 用途 |
+|---------|------|------|
+| **言語** | TypeScript 5+ | 型安全なフロントエンド開発 |
+| **フレームワーク** | Next.js 14+ | React フルスタックフレームワーク |
+| **ランタイム** | React 18+ | UIライブラリ |
+| **状態管理** | Zustand | 軽量な状態管理 |
+| **サーバーステート** | TanStack Query | API通信・キャッシング |
+| **HTTP Client** | Axios | HTTP通信 |
+| **スタイリング** | Tailwind CSS | ユーティリティCSS |
+| **コンポーネント** | shadcn/ui | 再利用可能UIコンポーネント |
+| **フォーム** | React Hook Form | フォーム管理 |
+| **バリデーション** | Zod | TypeScript型安全バリデーション |
+| **テスト** | Vitest | 高速テストランナー |
+| **コンポーネントテスト** | React Testing Library | コンポーネントテスト |
+| **E2Eテスト** | Playwright | エンドツーエンドテスト |
+| **型生成** | openapi-typescript | OpenAPIからTypeScript型生成 |
+| **リンター** | ESLint | コード品質管理 |
+| **フォーマッター** | Prettier | コードフォーマット |
 
 ---
 
@@ -540,10 +737,14 @@ Webフロントエンドの実装
 - [ ] **Milestone 3** (Week 9-12): 本番対応
   - セキュリティ強化完了
   - パフォーマンス最適化完了
-  - CI/CD・ドキュメント完了
+  - CI/CD自動化完了
 
 - [ ] **Milestone 4** (Week 13-16): フロントエンド
   - Webアプリケーション完了
+
+- [ ] **Milestone 5** (Week 17-18): ドキュメント整備（オプション）
+  - ドキュメント作成の必要性を検討
+  - 必要なドキュメントのみ作成
 
 ---
 
@@ -570,15 +771,19 @@ Webフロントエンドの実装
 
 ## 📅 タイムライン（概算）
 
-| フェーズ | 期間 | 工数（時間） |
-|---------|------|------------|
-| Phase 1-2 | Week 1-4 | 80h |
-| Phase 3-5 | Week 5-8 | 80h |
-| Phase 6-7 | Week 9-12 | 60h |
-| Phase 8 | Week 13-16 | 80h |
-| **合計** | **4ヶ月** | **300h** |
+| フェーズ | 期間 | 工数（時間） | 備考 |
+|---------|------|------------|------|
+| Phase 1-2 | Week 1-4 | 80h | コア機能（リファクタリング、TODO拡張） |
+| Phase 3-5 | Week 5-8 | 80h | 協働機能（検索、通知、共有） |
+| Phase 6-7 | Week 9-12 | 60h | 本番対応（セキュリティ、CI/CD） |
+| Phase 8 | Week 13-16 | 100h | フロントエンド（TypeScript、Next.js、テスト） |
+| Phase 9 | Week 17-18 | 30-40h | ドキュメント（オプション） |
+| **合計（Phase 9除く）** | **4ヶ月** | **320h** | - |
+| **合計（Phase 9含む）** | **4.5ヶ月** | **350-360h** | - |
 
 ※ パートタイムで週20時間作業と仮定
+※ Phase 8は型定義、テスト実装を含むため工数増
+※ Phase 9はプロジェクトの必要性に応じて実施を判断
 
 ---
 
@@ -593,6 +798,28 @@ Webフロントエンドの実装
 ### サンプルプロジェクト
 - [golang-gin-realworld-example-app](https://github.com/gothinkster/golang-gin-realworld-example-app)
 - [go-clean-arch](https://github.com/bxcodec/go-clean-arch)
+
+---
+
+## 📝 補足事項
+
+### ドキュメント作成について
+Phase 9（ドキュメント作成）は、以下の状況で実施を検討します：
+
+**実施を推奨するケース:**
+- プロジェクトをオープンソースとして公開する
+- チーム開発を行う（3人以上）
+- 外部のコントリビューターを募集する
+- 長期的なメンテナンスを想定している
+- ユーザー向けのドキュメントが必要
+
+**スキップまたは簡素化するケース:**
+- 個人の学習プロジェクト
+- 短期的なプロトタイプ
+- 小規模なチーム（1-2人）
+- コードの可読性が十分高い
+
+Phase 9実施前（Week 16終了時点）に改めて検討し、必要なドキュメントのみを作成します。
 
 ---
 
