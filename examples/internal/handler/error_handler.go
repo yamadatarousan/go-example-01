@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"gin-quickstart/examples/internal/domain"
+	"gin-quickstart/examples/internal/repository"
+	"gin-quickstart/examples/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -45,29 +47,37 @@ func ErrorHandler(handler AppHandler) gin.HandlerFunc {
 				}
 			}
 
-			// ドメイン固有のエラー処理
+			// Repository層のエラー処理
 			switch {
-			case errors.Is(err, domain.ErrNotFound):
+			case errors.Is(err, repository.ErrNotFound):
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": "Not Found",
 				})
 				return
-			case errors.Is(err, domain.ErrUnauthorized):
+			case errors.Is(err, repository.ErrConflict):
+				c.JSON(http.StatusConflict, gin.H{
+					"error": "Conflict",
+				})
+				return
+			}
+
+			// Service層のエラー処理
+			switch {
+			case errors.Is(err, service.ErrUnauthorized):
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error":   "Unauthorized",
 					"message": "Invalid email or password",
 				})
 				return
-			case errors.Is(err, domain.ErrForbidden):
+			case errors.Is(err, service.ErrForbidden):
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "Forbidden",
 				})
 				return
-			case errors.Is(err, domain.ErrConflict):
-				c.JSON(http.StatusConflict, gin.H{
-					"error": "Conflict",
-				})
-				return
+			}
+
+			// Domain層のエラー処理
+			switch {
 			case errors.Is(err, domain.ErrInvalidInput):
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": "Invalid Input",

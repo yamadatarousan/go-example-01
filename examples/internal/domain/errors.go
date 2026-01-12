@@ -2,19 +2,16 @@ package domain
 
 import "errors"
 
+// ビジネスルール違反のエラー定義
+// データベースやHTTPに依存しない、純粋なビジネスロジックのエラーのみをここに定義する
+
 var (
-	// ErrNotFound is returned when a requested resource is not found
-	ErrNotFound = errors.New("resource not found")
-
-	// ErrUnauthorized is returned when authentication fails
-	ErrUnauthorized = errors.New("unauthorized")
-
-	// ErrForbidden is returned when the user doesn't have permission
-	ErrForbidden = errors.New("forbidden")
-
-	// ErrConflict is returned when there's a unique constraint violation
-	ErrConflict = errors.New("resource already exists")
-
-	// ErrInvalidInput is returned when input validation fails
+	// ErrInvalidInput は入力値がビジネスルールに違反している場合に返される
 	ErrInvalidInput = errors.New("invalid input")
+
+	// 以下は具体的なビジネスルール違反の例（必要に応じて追加）
+	// ErrTodoNameRequired = errors.New("todo name is required")
+	// ErrTodoNameTooLong = errors.New("todo name exceeds maximum length")
+	// ErrPasswordTooShort = errors.New("password must be at least 8 characters")
+	// ErrInvalidEmailFormat = errors.New("invalid email format")
 )

@@ -56,13 +56,13 @@ func (s *AuthService) Signup(input domain.SignupInput) (domain.User, error) {
 func (s *AuthService) Login(input domain.LoginInput) (string, error) {
 	user, err := s.userRepo.FindUserByEmail(input.Email)
 	if err != nil {
-		return "", domain.ErrUnauthorized
+		return "", ErrUnauthorized
 	}
 
 	// パスワードの検証
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
 	if err != nil {
-		return "", domain.ErrUnauthorized
+		return "", ErrUnauthorized
 	}
 
 	// JWTトークンの生成
@@ -100,5 +100,5 @@ func (s *AuthService) ParseToken(tokenString string) (*AppClaims, error) {
 		return claims, nil
 	}
 
-	return nil, domain.ErrUnauthorized
+	return nil, ErrUnauthorized
 }
