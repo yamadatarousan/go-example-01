@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"gin-quickstart/internal/config"
-	"gin-quickstart/internal/handler"
-	"gin-quickstart/internal/middleware"
-	"gin-quickstart/internal/repository"
-	"gin-quickstart/internal/service"
+	"gin-quickstart/examples/internal/config"
+	"gin-quickstart/examples/internal/handler"
+	"gin-quickstart/examples/internal/middleware"
+	"gin-quickstart/examples/internal/repository"
+	"gin-quickstart/examples/internal/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -38,19 +38,23 @@ func main() {
 	// Repository層
 	todoRepo := repository.NewTodoRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	categoryRepo := repository.NewCategoryRepository(db) // Phase 2で追加
+	// tagRepo := repository.NewTagRepository(db)         // Phase 2で追加（Phase 3で使用）
 
 	// Service層
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
+	categoryService := service.NewCategoryService(categoryRepo) // Phase 2で追加
 
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
 	todoHandler := handler.NewTodoHandler(todoService)
 	adminHandler := handler.NewAdminHandler(adminService)
+	categoryHandler := handler.NewCategoryHandler(categoryService) // Phase 2で追加
 
 	// ルーターの設定
-	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler)
+	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler)
 
 	// Graceful Shutdownの実装
 	srv := &http.Server{
@@ -107,6 +111,7 @@ func setupRouter(
 	userHandler *handler.UserHandler,
 	todoHandler *handler.TodoHandler,
 	adminHandler *handler.AdminHandler,
+	categoryHandler *handler.CategoryHandler, // Phase 2で追加
 ) *gin.Engine {
 	router := gin.New()
 
@@ -157,6 +162,20 @@ func setupRouter(
 		v1.POST("/todos", handler.ErrorHandler(todoHandler.CreateTodo))
 		v1.PUT("/todos/:id", handler.ErrorHandler(todoHandler.UpdateTodo))
 		v1.DELETE("/todos/:id", handler.ErrorHandler(todoHandler.DeleteTodo))
+
+		// Phase 2で追加されたTODOエンドポイント
+		v1.POST("/todos/:id/complete", handler.ErrorHandler(todoHandler.CompleteTodo)) // TODO完了
+		v1.POST("/todos/:id/reopen", handler.ErrorHandler(todoHandler.ReopenTodo))     // TODO再開
+		v1.GET("/todos/overdue", handler.ErrorHandler(todoHandler.GetOverdueTodos))    // 期限切れTODO
+		v1.GET("/todos/today", handler.ErrorHandler(todoHandler.GetTodayTodos))        // 今日のTODO
+		v1.GET("/todos/week", handler.ErrorHandler(todoHandler.GetThisWeekTodos))      // 今週のTODO
+
+		// カテゴリーエンドポイント（Phase 2で追加）
+		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))       // カテゴリー作成
+		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))         // カテゴリー一覧
+		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))       // カテゴリー取得
+		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))    // カテゴリー更新
+		v1.DELETE("/categories/:id", handler.ErrorHandler(categoryHandler.DeleteCategory)) // カテゴリー削除
 
 		// 管理者専用エンドポイント
 		adminRoutes := v1.Group("/admin")

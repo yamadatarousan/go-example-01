@@ -43,3 +43,32 @@ func (s *TodoService) UpdateTodo(ctx context.Context, todo domain.Todo) (domain.
 func (s *TodoService) DeleteTodo(ctx context.Context, todoID, userID int) error {
 	return s.todoRepo.DeleteTodoWithAudit(ctx, todoID, userID)
 }
+
+// ============================================================================
+// Phase 2で追加されたメソッド
+// ============================================================================
+
+// CompleteTodo はTODOを完了状態にする
+func (s *TodoService) CompleteTodo(ctx context.Context, todoID, userID int) error {
+	return s.todoRepo.UpdateStatus(ctx, todoID, userID, "done")
+}
+
+// ReopenTodo はTODOを再開する（todoステータスに戻す）
+func (s *TodoService) ReopenTodo(ctx context.Context, todoID, userID int) error {
+	return s.todoRepo.UpdateStatus(ctx, todoID, userID, "todo")
+}
+
+// GetOverdueTodos は期限切れのTODOを取得
+func (s *TodoService) GetOverdueTodos(userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindOverdue(userID)
+}
+
+// GetTodayTodos は今日が期限のTODOを取得
+func (s *TodoService) GetTodayTodos(userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindToday(userID)
+}
+
+// GetThisWeekTodos は今週が期限のTODOを取得
+func (s *TodoService) GetThisWeekTodos(userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindThisWeek(userID)
+}

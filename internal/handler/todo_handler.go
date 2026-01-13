@@ -148,3 +148,89 @@ func (h *TodoHandler) DeleteTodo(c *gin.Context) error {
 	c.JSON(http.StatusOK, gin.H{"message": "Todo deleted successfully"})
 	return nil
 }
+
+// ============================================================================
+// Phase 2で追加されたメソッド
+// ============================================================================
+
+// CompleteTodo はTODOを完了状態にする
+func (h *TodoHandler) CompleteTodo(c *gin.Context) error {
+  todoID, err := strconv.Atoi(c.Param("id"))
+  if err != nil {
+    return domain.ErrInvalidInput
+  }
+
+  claims := c.MustGet("claims").(*service.AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+
+  err = h.todoService.CompleteTodo(c.Request.Context(), todoID, userID)
+  if err != nil {
+    return err
+  }
+
+  c.JSON(http.StatusOK, gin.H{"message": "Todo completed successfully"})
+  return nil
+}
+
+// ReopenTodo はTODOを再開する
+func (h *TodoHandler) ReopenTodo(c *gin.Context) error {
+  todoID, err := strconv.Atoi(c.Param("id"))
+  if err != nil {
+    return domain.ErrInvalidInput
+  }
+
+  claims := c.MustGet("claims").(*service.AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+
+  err = h.todoService.ReopenTodo(c.Request.Context(), todoID, userID)
+  if err != nil {
+    return err
+  }
+
+  c.JSON(http.StatusOK, gin.H{"message": "Todo reopened successfully"})
+  return nil
+}
+
+// GetOverdueTodos は期限切れのTODOを取得
+func (h *TodoHandler) GetOverdueTodos(c *gin.Context) error {
+  claims := c.MustGet("claims").(*service.AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+
+  todos, err := h.todoService.GetOverdueTodos(userID)
+  if err != nil {
+    return err
+  }
+
+  c.JSON(http.StatusOK, todos)
+  return nil
+}
+
+// GetTodayTodos は今日が期限のTODOを取得
+func (h *TodoHandler) GetTodayTodos(c *gin.Context) error {
+  claims := c.MustGet("claims").(*service.AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+
+  todos, err := h.todoService.GetTodayTodos(userID)
+  if err != nil {
+    return err
+  }
+
+  c.JSON(http.StatusOK, todos)
+  return nil
+}
+
+// GetThisWeekTodos は今週が期限のTODOを取得
+func (h *TodoHandler) GetThisWeekTodos(c *gin.Context) error {
+  claims := c.MustGet("claims").(*service.AppClaims)
+  userID, _ := strconv.Atoi(claims.Subject)
+
+  todos, err := h.todoService.GetThisWeekTodos(userID)
+  if err != nil {
+    return err
+  }
+
+  c.JSON(http.StatusOK, todos)
+  return nil
+}
+
+
