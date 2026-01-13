@@ -43,14 +43,14 @@ func (r *tagRepository) FindOrCreateByName(ctx context.Context, name string) (do
 }
 
 // FindAll は全タグを取得
-func (r *tagRepository) FindAll() ([]domain.Tag, error) {
+func (r *tagRepository) FindAll(ctx context.Context) ([]domain.Tag, error) {
 	query := `
 		SELECT id, name, created_at
 		FROM tags
 		ORDER BY name ASC
 	`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("タグ一覧の取得に失敗しました: %w", err)
 	}
@@ -112,7 +112,7 @@ func (r *tagRepository) DetachFromTodo(ctx context.Context, todoID int) error {
 }
 
 // FindByTodoID はTODO IDに紐づくタグを取得
-func (r *tagRepository) FindByTodoID(todoID int) ([]domain.Tag, error) {
+func (r *tagRepository) FindByTodoID(ctx context.Context, todoID int) ([]domain.Tag, error) {
 	query := `
 		SELECT t.id, t.name, t.created_at
 		FROM tags t
@@ -121,7 +121,7 @@ func (r *tagRepository) FindByTodoID(todoID int) ([]domain.Tag, error) {
 		ORDER BY t.name ASC
 	`
 
-	rows, err := r.db.Query(query, todoID)
+	rows, err := r.db.QueryContext(ctx, query, todoID)
 	if err != nil {
 		return nil, fmt.Errorf("タグの取得に失敗しました: %w", err)
 	}

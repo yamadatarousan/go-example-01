@@ -53,7 +53,7 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) error {
 		return service.ErrUnauthorized
 	}
 
-	categories, err := h.categoryService.GetCategories(userID.(int))
+	categories, err := h.categoryService.GetCategories(c.Request.Context(), userID.(int))
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) error {
 		return service.ErrUnauthorized
 	}
 
-	category, err := h.categoryService.GetCategory(categoryID, userID.(int))
+	category, err := h.categoryService.GetCategory(c.Request.Context(), categoryID, userID.(int))
 	if err != nil {
 		return err
 	}

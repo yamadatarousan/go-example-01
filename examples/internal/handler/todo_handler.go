@@ -29,7 +29,7 @@ func (h *TodoHandler) GetTodos(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 
-	todos, err := h.todoService.GetTodos(userID)
+	todos, err := h.todoService.GetTodos(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (h *TodoHandler) GetTodo(c *gin.Context) error {
 	userID, _ := strconv.Atoi(claims.Subject)
 
 	// TODOを取得
-	todo, err := h.todoService.GetTodo(todoID, userID)
+	todo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
@@ -196,7 +196,7 @@ func (h *TodoHandler) GetOverdueTodos(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 
-	todos, err := h.todoService.GetOverdueTodos(userID)
+	todos, err := h.todoService.GetOverdueTodos(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (h *TodoHandler) GetTodayTodos(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 
-	todos, err := h.todoService.GetTodayTodos(userID)
+	todos, err := h.todoService.GetTodayTodos(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func (h *TodoHandler) GetThisWeekTodos(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 
-	todos, err := h.todoService.GetThisWeekTodos(userID)
+	todos, err := h.todoService.GetThisWeekTodos(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 
 	"gin-quickstart/examples/internal/domain"
@@ -17,8 +18,9 @@ func NewUserRepository(db *sql.DB) UserRepository {
 }
 
 // CreateUser は新しいユーザーを作成
-func (r *userRepository) CreateUser(user domain.User) (domain.User, error) {
-	err := r.db.QueryRow(
+func (r *userRepository) CreateUser(ctx context.Context, user domain.User) (domain.User, error) {
+	err := r.db.QueryRowContext(
+		ctx,
 		"INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, created_at, role",
 		user.Email, user.PasswordHash).Scan(&user.ID, &user.CreatedAt, &user.Role)
 	if err != nil {
@@ -28,9 +30,13 @@ func (r *userRepository) CreateUser(user domain.User) (domain.User, error) {
 }
 
 // FindUserByEmail はメールアドレスでユーザーを検索
-func (r *userRepository) FindUserByEmail(email string) (domain.User, error) {
+func (r *userRepository) FindUserByEmail(ctx context.Context, email string) (domain.User, error) {
 	var user domain.User
-	err := r.db.QueryRow("SELECT id, email, password_hash, created_at, role FROM users WHERE email = $1", email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.Role)
+	err := r.db.QueryRowContext(
+		ctx,
+		"SELECT id, email, password_hash, created_at, role FROM users WHERE email = $1",
+		email,
+	).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.Role)
 	if err != nil {
 		return user, err
 	}
@@ -38,8 +44,8 @@ func (r *userRepository) FindUserByEmail(email string) (domain.User, error) {
 }
 
 // FindAllUsers は全てのユーザーを取得
-func (r *userRepository) FindAllUsers() ([]domain.User, error) {
-	rows, err := r.db.Query("SELECT id, email, created_at, role FROM users")
+func (r *userRepository) FindAllUsers(ctx context.Context) ([]domain.User, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT id, email, created_at, role FROM users")
 	if err != nil {
 		return nil, err
 	}

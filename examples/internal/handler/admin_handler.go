@@ -22,7 +22,7 @@ func NewAdminHandler(adminService *service.AdminService) *AdminHandler {
 
 // GetAllUsers は全てのユーザーを取得
 func (h *AdminHandler) GetAllUsers(c *gin.Context) error {
-	users, err := h.adminService.GetAllUsers()
+	users, err := h.adminService.GetAllUsers(c.Request.Context())
 	if err != nil {
 		return err
 	}

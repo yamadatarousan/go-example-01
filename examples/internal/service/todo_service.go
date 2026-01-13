@@ -20,13 +20,13 @@ func NewTodoService(todoRepo repository.TodoRepository) *TodoService {
 }
 
 // GetTodos は指定されたユーザーの全てのTODOを取得
-func (s *TodoService) GetTodos(userID int) ([]domain.Todo, error) {
-	return s.todoRepo.FindAll(userID)
+func (s *TodoService) GetTodos(ctx context.Context, userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindAll(ctx, userID)
 }
 
 // GetTodo は指定されたIDのTODOを取得
-func (s *TodoService) GetTodo(todoID, userID int) (domain.Todo, error) {
-	return s.todoRepo.FindByID(todoID, userID)
+func (s *TodoService) GetTodo(ctx context.Context, todoID, userID int) (domain.Todo, error) {
+	return s.todoRepo.FindByID(ctx, todoID, userID)
 }
 
 // CreateTodo はTODOを作成（監査ログ付き）
@@ -59,16 +59,16 @@ func (s *TodoService) ReopenTodo(ctx context.Context, todoID, userID int) error 
 }
 
 // GetOverdueTodos は期限切れのTODOを取得
-func (s *TodoService) GetOverdueTodos(userID int) ([]domain.Todo, error) {
-	return s.todoRepo.FindOverdue(userID)
+func (s *TodoService) GetOverdueTodos(ctx context.Context, userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindOverdue(ctx, userID)
 }
 
 // GetTodayTodos は今日が期限のTODOを取得
-func (s *TodoService) GetTodayTodos(userID int) ([]domain.Todo, error) {
-	return s.todoRepo.FindToday(userID)
+func (s *TodoService) GetTodayTodos(ctx context.Context, userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindToday(ctx, userID)
 }
 
 // GetThisWeekTodos は今週が期限のTODOを取得
-func (s *TodoService) GetThisWeekTodos(userID int) ([]domain.Todo, error) {
-	return s.todoRepo.FindThisWeek(userID)
+func (s *TodoService) GetThisWeekTodos(ctx context.Context, userID int) ([]domain.Todo, error) {
+	return s.todoRepo.FindThisWeek(ctx, userID)
 }

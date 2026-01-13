@@ -19,8 +19,8 @@ func NewTodoRepository(db *sql.DB) TodoRepository {
 }
 
 // FindAll は指定されたユーザーの全てのTODOを取得
-func (r *todoRepository) FindAll(userID int) ([]domain.Todo, error) {
-	rows, err := r.db.Query("SELECT id, name, user_id FROM todos WHERE user_id = $1", userID)
+func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT id, name, user_id FROM todos WHERE user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,9 +40,10 @@ func (r *todoRepository) FindAll(userID int) ([]domain.Todo, error) {
 }
 
 // FindByID は指定されたIDのTODOを取得
-func (r *todoRepository) FindByID(todoID, userID int) (domain.Todo, error) {
+func (r *todoRepository) FindByID(ctx context.Context, todoID, userID int) (domain.Todo, error) {
 	var todo domain.Todo
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		"SELECT id, name, user_id FROM todos WHERE id = $1 AND user_id = $2",
 		todoID, userID,
 	).Scan(&todo.ID, &todo.Name, &todo.UserID)
@@ -53,9 +54,10 @@ func (r *todoRepository) FindByID(todoID, userID int) (domain.Todo, error) {
 }
 
 // Create はTODOを作成
-func (r *todoRepository) Create(todo domain.Todo) (domain.Todo, error) {
+func (r *todoRepository) Create(ctx context.Context, todo domain.Todo) (domain.Todo, error) {
 	var id int
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		"INSERT INTO todos (name, user_id) VALUES ($1, $2) RETURNING id",
 		todo.Name, todo.UserID,
 	).Scan(&id)
@@ -219,7 +221,7 @@ func (r *todoRepository) UpdateStatus(ctx context.Context, todoID, userID int, s
 }
 
 // FindOverdue は期限切れのTODOを取得
-func (r *todoRepository) FindOverdue(userID int) ([]domain.Todo, error) {
+func (r *todoRepository) FindOverdue(ctx context.Context, userID int) ([]domain.Todo, error) {
 	query := `
 		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
 		FROM todos
@@ -229,11 +231,11 @@ func (r *todoRepository) FindOverdue(userID int) ([]domain.Todo, error) {
 		ORDER BY due_date ASC
 	`
 
-	return r.queryTodos(query, userID)
+	return r.queryTodos(ctx, query, userID)
 }
 
 // FindToday は今日が期限のTODOを取得
-func (r *todoRepository) FindToday(userID int) ([]domain.Todo, error) {
+func (r *todoRepository) FindToday(ctx context.Context, userID int) ([]domain.Todo, error) {
 	query := `
 		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
 		FROM todos
@@ -243,11 +245,11 @@ func (r *todoRepository) FindToday(userID int) ([]domain.Todo, error) {
 		ORDER BY priority DESC, due_date ASC
 	`
 
-	return r.queryTodos(query, userID)
+	return r.queryTodos(ctx, query, userID)
 }
 
 // FindThisWeek は今週が期限のTODOを取得
-func (r *todoRepository) FindThisWeek(userID int) ([]domain.Todo, error) {
+func (r *todoRepository) FindThisWeek(ctx context.Context, userID int) ([]domain.Todo, error) {
 	query := `
 		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
 		FROM todos
@@ -258,12 +260,12 @@ func (r *todoRepository) FindThisWeek(userID int) ([]domain.Todo, error) {
 		ORDER BY due_date ASC, priority DESC
 	`
 
-	return r.queryTodos(query, userID)
+	return r.queryTodos(ctx, query, userID)
 }
 
 // queryTodos は共通のクエリ実行ロジック
-func (r *todoRepository) queryTodos(query string, args ...interface{}) ([]domain.Todo, error) {
-	rows, err := r.db.Query(query, args...)
+func (r *todoRepository) queryTodos(ctx context.Context, query string, args ...interface{}) ([]domain.Todo, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("TODOの取得に失敗しました: %w", err)
 	}

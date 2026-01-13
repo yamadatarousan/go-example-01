@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"gin-quickstart/examples/internal/domain"
 	"gin-quickstart/examples/internal/repository"
 )
@@ -18,6 +20,6 @@ func NewAdminService(userRepo repository.UserRepository) *AdminService {
 }
 
 // GetAllUsers は全てのユーザーを取得
-func (s *AdminService) GetAllUsers() ([]domain.User, error) {
-	return s.userRepo.FindAllUsers()
+func (s *AdminService) GetAllUsers(ctx context.Context) ([]domain.User, error) {
+	return s.userRepo.FindAllUsers(ctx)
 }
