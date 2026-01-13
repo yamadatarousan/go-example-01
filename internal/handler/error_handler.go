@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"gin-quickstart/examples/internal/domain"
-	"gin-quickstart/examples/internal/repository"
-	"gin-quickstart/examples/internal/service"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/repository"
+	"gin-quickstart/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"

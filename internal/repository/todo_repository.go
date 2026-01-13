@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"gin-quickstart/examples/internal/domain"
+	"gin-quickstart/internal/domain"
 )
 
 // todoRepository はTodoRepositoryインターフェースの実装

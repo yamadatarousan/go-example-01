@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"gin-quickstart/examples/internal/domain"
-	"gin-quickstart/examples/internal/repository"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/repository"
 )
 
 // TodoService はTODO関連のビジネスロジックを提供

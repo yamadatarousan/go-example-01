@@ -1,8 +1,8 @@
 package service
 
 import (
-	"gin-quickstart/examples/internal/domain"
-	"gin-quickstart/examples/internal/repository"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/repository"
 )
 
 // AdminService は管理者関連のビジネスロジックを提供

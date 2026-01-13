@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gin-quickstart/examples/internal/service"
+	"gin-quickstart/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

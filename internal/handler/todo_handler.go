@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"gin-quickstart/examples/internal/domain"
-	"gin-quickstart/examples/internal/service"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

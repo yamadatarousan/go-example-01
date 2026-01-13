@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"gin-quickstart/examples/internal/domain"
+	"gin-quickstart/internal/domain"
 )
 
 // ============================================================================

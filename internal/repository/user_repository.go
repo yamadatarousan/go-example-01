@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"gin-quickstart/examples/internal/domain"
+	"gin-quickstart/internal/domain"
 )
 
 // userRepository はUserRepositoryインターフェースの実装

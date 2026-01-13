@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"gin-quickstart/examples/internal/domain"
-	"gin-quickstart/examples/internal/repository"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/repository"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
