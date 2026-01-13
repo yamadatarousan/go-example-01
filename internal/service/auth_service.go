@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -32,7 +33,7 @@ type AppClaims struct {
 }
 
 // Signup は新しいユーザーを登録
-func (s *AuthService) Signup(input domain.SignupInput) (domain.User, error) {
+func (s *AuthService) Signup(ctx context.Context, input domain.SignupInput) (domain.User, error) {
 	// パスワードのハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -44,7 +45,7 @@ func (s *AuthService) Signup(input domain.SignupInput) (domain.User, error) {
 		PasswordHash: string(hashedPassword),
 	}
 
-	createdUser, err := s.userRepo.CreateUser(user)
+	createdUser, err := s.userRepo.CreateUser(ctx, user)
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -53,8 +54,8 @@ func (s *AuthService) Signup(input domain.SignupInput) (domain.User, error) {
 }
 
 // Login はユーザー認証を行い、JWTトークンを生成
-func (s *AuthService) Login(input domain.LoginInput) (string, error) {
-	user, err := s.userRepo.FindUserByEmail(input.Email)
+func (s *AuthService) Login(ctx context.Context, input domain.LoginInput) (string, error) {
+	user, err := s.userRepo.FindUserByEmail(ctx, input.Email)
 	if err != nil {
 		return "", ErrUnauthorized
 	}

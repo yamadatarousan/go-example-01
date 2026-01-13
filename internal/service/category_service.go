@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	// ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
+	// 例: "gin-quickstart/internal/domain" → "gin-quickstart/internal/domain"
 	"gin-quickstart/internal/domain"
 	"gin-quickstart/internal/repository"
 )
@@ -37,8 +39,8 @@ func (s *CategoryService) CreateCategory(ctx context.Context, userID int, input 
 }
 
 // GetCategories はユーザーの全カテゴリーを取得
-func (s *CategoryService) GetCategories(userID int) ([]domain.Category, error) {
-	categories, err := s.categoryRepo.FindAll(userID)
+func (s *CategoryService) GetCategories(ctx context.Context, userID int) ([]domain.Category, error) {
+	categories, err := s.categoryRepo.FindAll(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("カテゴリー一覧の取得に失敗しました: %w", err)
 	}
@@ -47,8 +49,8 @@ func (s *CategoryService) GetCategories(userID int) ([]domain.Category, error) {
 }
 
 // GetCategory は特定のカテゴリーを取得
-func (s *CategoryService) GetCategory(categoryID, userID int) (domain.Category, error) {
-	category, err := s.categoryRepo.FindByID(categoryID, userID)
+func (s *CategoryService) GetCategory(ctx context.Context, categoryID, userID int) (domain.Category, error) {
+	category, err := s.categoryRepo.FindByID(ctx, categoryID, userID)
 	if err != nil {
 		return domain.Category{}, fmt.Errorf("カテゴリーの取得に失敗しました: %w", err)
 	}

@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"gin-quickstart/examples/internal/config"
-	"gin-quickstart/examples/internal/handler"
-	"gin-quickstart/examples/internal/middleware"
-	"gin-quickstart/examples/internal/repository"
-	"gin-quickstart/examples/internal/service"
+	"gin-quickstart/internal/config"
+	"gin-quickstart/internal/handler"
+	"gin-quickstart/internal/middleware"
+	"gin-quickstart/internal/repository"
+	"gin-quickstart/internal/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

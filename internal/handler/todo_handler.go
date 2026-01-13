@@ -29,7 +29,7 @@ func (h *TodoHandler) GetTodos(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 
-	todos, err := h.todoService.GetTodos(userID)
+	todos, err := h.todoService.GetTodos(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (h *TodoHandler) GetTodo(c *gin.Context) error {
 	userID, _ := strconv.Atoi(claims.Subject)
 
 	// TODOを取得
-	todo, err := h.todoService.GetTodo(todoID, userID)
+	todo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
@@ -155,82 +155,80 @@ func (h *TodoHandler) DeleteTodo(c *gin.Context) error {
 
 // CompleteTodo はTODOを完了状態にする
 func (h *TodoHandler) CompleteTodo(c *gin.Context) error {
-  todoID, err := strconv.Atoi(c.Param("id"))
-  if err != nil {
-    return domain.ErrInvalidInput
-  }
+	todoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return domain.ErrInvalidInput
+	}
 
-  claims := c.MustGet("claims").(*service.AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-  err = h.todoService.CompleteTodo(c.Request.Context(), todoID, userID)
-  if err != nil {
-    return err
-  }
+	err = h.todoService.CompleteTodo(c.Request.Context(), todoID, userID)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, gin.H{"message": "Todo completed successfully"})
-  return nil
+	c.JSON(http.StatusOK, gin.H{"message": "Todo completed successfully"})
+	return nil
 }
 
 // ReopenTodo はTODOを再開する
 func (h *TodoHandler) ReopenTodo(c *gin.Context) error {
-  todoID, err := strconv.Atoi(c.Param("id"))
-  if err != nil {
-    return domain.ErrInvalidInput
-  }
+	todoID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return domain.ErrInvalidInput
+	}
 
-  claims := c.MustGet("claims").(*service.AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-  err = h.todoService.ReopenTodo(c.Request.Context(), todoID, userID)
-  if err != nil {
-    return err
-  }
+	err = h.todoService.ReopenTodo(c.Request.Context(), todoID, userID)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, gin.H{"message": "Todo reopened successfully"})
-  return nil
+	c.JSON(http.StatusOK, gin.H{"message": "Todo reopened successfully"})
+	return nil
 }
 
 // GetOverdueTodos は期限切れのTODOを取得
 func (h *TodoHandler) GetOverdueTodos(c *gin.Context) error {
-  claims := c.MustGet("claims").(*service.AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-  todos, err := h.todoService.GetOverdueTodos(userID)
-  if err != nil {
-    return err
-  }
+	todos, err := h.todoService.GetOverdueTodos(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, todos)
-  return nil
+	c.JSON(http.StatusOK, todos)
+	return nil
 }
 
 // GetTodayTodos は今日が期限のTODOを取得
 func (h *TodoHandler) GetTodayTodos(c *gin.Context) error {
-  claims := c.MustGet("claims").(*service.AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-  todos, err := h.todoService.GetTodayTodos(userID)
-  if err != nil {
-    return err
-  }
+	todos, err := h.todoService.GetTodayTodos(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, todos)
-  return nil
+	c.JSON(http.StatusOK, todos)
+	return nil
 }
 
 // GetThisWeekTodos は今週が期限のTODOを取得
 func (h *TodoHandler) GetThisWeekTodos(c *gin.Context) error {
-  claims := c.MustGet("claims").(*service.AppClaims)
-  userID, _ := strconv.Atoi(claims.Subject)
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-  todos, err := h.todoService.GetThisWeekTodos(userID)
-  if err != nil {
-    return err
-  }
+	todos, err := h.todoService.GetThisWeekTodos(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, todos)
-  return nil
+	c.JSON(http.StatusOK, todos)
+	return nil
 }
-
-

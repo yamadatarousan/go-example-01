@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	// ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
+	// 例: "gin-quickstart/internal/domain" → "gin-quickstart/internal/domain"
 	"gin-quickstart/internal/domain"
 )
 
@@ -49,7 +51,7 @@ func (r *categoryRepository) Create(ctx context.Context, category domain.Categor
 }
 
 // FindAll はユーザーの全カテゴリーを取得
-func (r *categoryRepository) FindAll(userID int) ([]domain.Category, error) {
+func (r *categoryRepository) FindAll(ctx context.Context, userID int) ([]domain.Category, error) {
 	query := `
 		SELECT id, name, color, user_id, created_at, updated_at
 		FROM categories
@@ -57,7 +59,7 @@ func (r *categoryRepository) FindAll(userID int) ([]domain.Category, error) {
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.db.Query(query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("カテゴリー一覧の取得に失敗しました: %w", err)
 	}
@@ -81,7 +83,7 @@ func (r *categoryRepository) FindAll(userID int) ([]domain.Category, error) {
 }
 
 // FindByID は特定のカテゴリーを取得
-func (r *categoryRepository) FindByID(categoryID, userID int) (domain.Category, error) {
+func (r *categoryRepository) FindByID(ctx context.Context, categoryID, userID int) (domain.Category, error) {
 	query := `
 		SELECT id, name, color, user_id, created_at, updated_at
 		FROM categories
@@ -89,7 +91,7 @@ func (r *categoryRepository) FindByID(categoryID, userID int) (domain.Category, 
 	`
 
 	var category domain.Category
-	err := r.db.QueryRow(query, categoryID, userID).Scan(
+	err := r.db.QueryRowContext(ctx, query, categoryID, userID).Scan(
 		&category.ID,
 		&category.Name,
 		&category.Color,
@@ -111,7 +113,7 @@ func (r *categoryRepository) FindByID(categoryID, userID int) (domain.Category, 
 // Update はカテゴリーを更新
 func (r *categoryRepository) Update(ctx context.Context, categoryID, userID int, input domain.UpdateCategoryInput) (domain.Category, error) {
 	// 既存のカテゴリーを取得
-	existing, err := r.FindByID(categoryID, userID)
+	existing, err := r.FindByID(ctx, categoryID, userID)
 	if err != nil {
 		return domain.Category{}, err
 	}
@@ -154,7 +156,7 @@ func (r *categoryRepository) Update(ctx context.Context, categoryID, userID int,
 // Delete はカテゴリーを削除
 func (r *categoryRepository) Delete(ctx context.Context, categoryID, userID int) error {
 	// カテゴリーが存在するか確認
-	_, err := r.FindByID(categoryID, userID)
+	_, err := r.FindByID(ctx, categoryID, userID)
 	if err != nil {
 		return err
 	}

@@ -188,37 +188,43 @@ import (
 //
 // このインターフェースは、Service層とRepository層の境界を定義します。
 // Service層はこのインターフェースを通じてのみRepository層と通信します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
 type TodoRepository interface {
-	FindAll(userID int) ([]domain.Todo, error)
-	FindByID(todoID, userID int) (domain.Todo, error)
-	Create(todo domain.Todo) (domain.Todo, error)
+	FindAll(ctx context.Context, userID int) ([]domain.Todo, error)
+	FindByID(ctx context.Context, todoID, userID int) (domain.Todo, error)
+	Create(ctx context.Context, todo domain.Todo) (domain.Todo, error)
 	CreateTodoWithAudit(ctx context.Context, todo domain.Todo) (domain.Todo, error)
 	UpdateTodoWithAudit(ctx context.Context, todo domain.Todo) (domain.Todo, error)
 	DeleteTodoWithAudit(ctx context.Context, todoID, userID int) error
 
 	// Phase 2で追加されたメソッド
 	UpdateStatus(ctx context.Context, todoID, userID int, status string) error // ステータス更新
-	FindOverdue(userID int) ([]domain.Todo, error)                             // 期限切れTODO一覧
-	FindToday(userID int) ([]domain.Todo, error)                               // 今日のTODO一覧
-	FindThisWeek(userID int) ([]domain.Todo, error)                            // 今週のTODO一覧
+	FindOverdue(ctx context.Context, userID int) ([]domain.Todo, error)        // 期限切れTODO一覧
+	FindToday(ctx context.Context, userID int) ([]domain.Todo, error)          // 今日のTODO一覧
+	FindThisWeek(ctx context.Context, userID int) ([]domain.Todo, error)       // 今週のTODO一覧
 }
 
 // UserRepository はユーザーデータアクセスの層境界インターフェース
 //
 // このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
 type UserRepository interface {
-	CreateUser(user domain.User) (domain.User, error)
-	FindUserByEmail(email string) (domain.User, error)
-	FindAllUsers() ([]domain.User, error)
+	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	FindUserByEmail(ctx context.Context, email string) (domain.User, error)
+	FindAllUsers(ctx context.Context) ([]domain.User, error)
 }
 
 // CategoryRepository はカテゴリーデータアクセスの層境界インターフェース
 //
 // このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
 type CategoryRepository interface {
 	Create(ctx context.Context, category domain.Category) (domain.Category, error)
-	FindAll(userID int) ([]domain.Category, error)
-	FindByID(categoryID, userID int) (domain.Category, error)
+	FindAll(ctx context.Context, userID int) ([]domain.Category, error)
+	FindByID(ctx context.Context, categoryID, userID int) (domain.Category, error)
 	Update(ctx context.Context, categoryID, userID int, input domain.UpdateCategoryInput) (domain.Category, error)
 	Delete(ctx context.Context, categoryID, userID int) error
 }
@@ -226,10 +232,12 @@ type CategoryRepository interface {
 // TagRepository はタグデータアクセスの層境界インターフェース
 //
 // このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
 type TagRepository interface {
 	FindOrCreateByName(ctx context.Context, name string) (domain.Tag, error) // 名前で検索、なければ作成
-	FindAll() ([]domain.Tag, error)                                          // 全タグ一覧
+	FindAll(ctx context.Context) ([]domain.Tag, error)                       // 全タグ一覧
 	AttachToTodo(ctx context.Context, todoID int, tagIDs []int) error        // TODOにタグを紐付け
 	DetachFromTodo(ctx context.Context, todoID int) error                    // TODOからタグを解除
-	FindByTodoID(todoID int) ([]domain.Tag, error)                           // TODO IDに紐づくタグを取得
+	FindByTodoID(ctx context.Context, todoID int) ([]domain.Tag, error)     // TODO IDに紐づくタグを取得
 }

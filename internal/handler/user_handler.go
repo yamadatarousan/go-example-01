@@ -28,7 +28,7 @@ func (h *UserHandler) Signup(c *gin.Context) error {
 		return err
 	}
 
-	createdUser, err := h.authService.Signup(input)
+	createdUser, err := h.authService.Signup(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (h *UserHandler) Login(c *gin.Context) error {
 		return err
 	}
 
-	token, err := h.authService.Login(input)
+	token, err := h.authService.Login(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
