@@ -1,58 +1,58 @@
 package handler
 
 import (
-  "net/http"
+	"net/http"
 
-  "gin-quickstart/internal/domain"
-  "gin-quickstart/internal/service"
+	"gin-quickstart/internal/domain"
+	"gin-quickstart/internal/service"
 
-  "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 // UserHandler はユーザー関連のHTTPリクエストを処理
 type UserHandler struct {
-  authService *service.AuthService
+	authService *service.AuthService
 }
 
 // NewUserHandler はUserHandlerの新しいインスタンスを作成
-func NewUserHandler(authService *service.AuthService) *userHandler {
-  return &UserHandler{
-    authService: authService,
-  }
+func NewUserHandler(authService *service.AuthService) *UserHandler {
+	return &UserHandler{
+		authService: authService,
+	}
 }
 
 // Signup はユーザー登録を処理
-func (h *UserHandler) Singup(c *gin.Context) error {
-  var input domain.SingupInput
-  if err := c.ShouldBindJSON(&input); err != nil {
-    return err
-  }
+func (h *UserHandler) Signup(c *gin.Context) error {
+	var input domain.SignupInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
 
-  createdUser, err := h.authService.Singup(input)
-  if err != nil {
-    return err
-  }
+	createdUser, err := h.authService.Signup(input)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusCreated, gin.H{
-    "id":         createdUser.ID,
-    "email":      createdUser.Email,
-    "created_at": createdUser.CreatedAt,
-  })
-  return nil
+	c.JSON(http.StatusCreated, gin.H{
+		"id":         createdUser.ID,
+		"email":      createdUser.Email,
+		"created_at": createdUser.CreatedAt,
+	})
+	return nil
 }
 
 // Login はユーザーログインを処理
 func (h *UserHandler) Login(c *gin.Context) error {
-  var input domain.LoginInput
-  if err := c.ShouldBindJSON(&input); err != nil {
-    return err
-  }
+	var input domain.LoginInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
 
-  token, err := h.authService.Login(input)
-  if err != nil {
-    return err
-  }
+	token, err := h.authService.Login(input)
+	if err != nil {
+		return err
+	}
 
-  c.JSON(http.StatusOK, gin.H{"token": token}
-  return nil
+	c.JSON(http.StatusOK, gin.H{"token": token})
+	return nil
 }

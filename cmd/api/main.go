@@ -136,16 +136,16 @@ func setupRouter(
 	router.Use(middleware.RequestIDMiddleware())      // リクエストIDの生成
 	router.Use(gin.LoggerWithFormatter(logFormatter)) // ログ出力
 
-  // ヘルスチェック
-  router.GET("/ping", func(c *gin.Context) {
-    c.JSON(200, gin.H{
-      "message": "pong",
-    })
-  })
+	// ヘルスチェック
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
 
-  // 認証エンドポイント
-  router.POST("/signup", handler.ErrorHandler(userHandler.Signup))
-  router.POST("/login", handler.ErrorHandler(userHandler.Login))
+	// 認証エンドポイント
+	router.POST("/signup", handler.ErrorHandler(userHandler.Signup))
+	router.POST("/login", handler.ErrorHandler(userHandler.Login))
 
 	// 認証が必要なエンドポイント
 	v1 := router.Group("/api/v1")
