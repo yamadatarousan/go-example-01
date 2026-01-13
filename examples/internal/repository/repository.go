@@ -195,6 +195,12 @@ type TodoRepository interface {
 	CreateTodoWithAudit(ctx context.Context, todo domain.Todo) (domain.Todo, error)
 	UpdateTodoWithAudit(ctx context.Context, todo domain.Todo) (domain.Todo, error)
 	DeleteTodoWithAudit(ctx context.Context, todoID, userID int) error
+
+	// Phase 2で追加されたメソッド
+	UpdateStatus(ctx context.Context, todoID, userID int, status string) error // ステータス更新
+	FindOverdue(userID int) ([]domain.Todo, error)                              // 期限切れTODO一覧
+	FindToday(userID int) ([]domain.Todo, error)                                // 今日のTODO一覧
+	FindThisWeek(userID int) ([]domain.Todo, error)                             // 今週のTODO一覧
 }
 
 // UserRepository はユーザーデータアクセスの層境界インターフェース
@@ -204,4 +210,26 @@ type UserRepository interface {
 	CreateUser(user domain.User) (domain.User, error)
 	FindUserByEmail(email string) (domain.User, error)
 	FindAllUsers() ([]domain.User, error)
+}
+
+// CategoryRepository はカテゴリーデータアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+type CategoryRepository interface {
+	Create(ctx context.Context, category domain.Category) (domain.Category, error)
+	FindAll(userID int) ([]domain.Category, error)
+	FindByID(categoryID, userID int) (domain.Category, error)
+	Update(ctx context.Context, categoryID, userID int, input domain.UpdateCategoryInput) (domain.Category, error)
+	Delete(ctx context.Context, categoryID, userID int) error
+}
+
+// TagRepository はタグデータアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+type TagRepository interface {
+	FindOrCreateByName(ctx context.Context, name string) (domain.Tag, error) // 名前で検索、なければ作成
+	FindAll() ([]domain.Tag, error)                                           // 全タグ一覧
+	AttachToTodo(ctx context.Context, todoID int, tagIDs []int) error        // TODOにタグを紐付け
+	DetachFromTodo(ctx context.Context, todoID int) error                    // TODOからタグを解除
+	FindByTodoID(todoID int) ([]domain.Tag, error)                           // TODO IDに紐づくタグを取得
 }

@@ -145,9 +145,191 @@ examples/
    )
    ```
 
+---
+
+## Phase 2: TODO機能の拡張（完了: 2026-01-13）
+
+### 実施内容
+
+**2.1 データベースマイグレーション**
+- ✅ TODOテーブルの拡張（優先度、期限、ステータス、説明、サブタスク）
+- ✅ カテゴリーテーブルの作成
+- ✅ タグテーブルと中間テーブルの作成（Many-to-Many）
+- ✅ パフォーマンス向上のためのインデックス追加
+
+**マイグレーションファイル（6ファイル）**
+- `db/migrations/000008_add_todo_extensions.up/down.sql`
+- `db/migrations/000009_create_categories_table.up/down.sql`
+- `db/migrations/000010_create_tags_table.up/down.sql`
+
+**2.2 ドメインモデルの拡張**
+- ✅ Todoエンティティの拡張（Priority, Status, DueDate, Description, CategoryID, ParentTodoID）
+- ✅ Categoryエンティティの追加
+- ✅ Tagエンティティの追加
+- ✅ CreateTodoInput / UpdateTodoInput の追加
+
+**2.3 Repository層の拡張**
+- ✅ TodoRepositoryに新しいメソッド追加
+  - `UpdateStatus`: ステータス更新
+  - `FindOverdue`: 期限切れTODO取得
+  - `FindToday`: 今日が期限のTODO取得
+  - `FindThisWeek`: 今週が期限のTODO取得
+- ✅ CategoryRepository の実装（CRUD操作）
+- ✅ TagRepository の実装（作成・紐付け・検索）
+
+**2.4 Service層の拡張**
+- ✅ CategoryService の実装
+- ✅ TodoServiceに新しいメソッド追加
+  - `CompleteTodo`: TODO完了
+  - `ReopenTodo`: TODO再開
+  - `GetOverdueTodos`: 期限切れTODO取得
+  - `GetTodayTodos`: 今日のTODO取得
+  - `GetThisWeekTodos`: 今週のTODO取得
+
+**2.5 Handler層の拡張**
+- ✅ CategoryHandler の実装（カテゴリーCRUD）
+- ✅ TodoHandlerに新しいエンドポイント追加
+  - `POST /api/v1/todos/:id/complete`: TODO完了
+  - `POST /api/v1/todos/:id/reopen`: TODO再開
+  - `GET /api/v1/todos/overdue`: 期限切れTODO一覧
+  - `GET /api/v1/todos/today`: 今日のTODO一覧
+  - `GET /api/v1/todos/week`: 今週のTODO一覧
+
+**2.6 カテゴリーエンドポイント**
+- ✅ `POST /api/v1/categories`: カテゴリー作成
+- ✅ `GET /api/v1/categories`: カテゴリー一覧
+- ✅ `GET /api/v1/categories/:id`: カテゴリー取得
+- ✅ `PUT /api/v1/categories/:id`: カテゴリー更新
+- ✅ `DELETE /api/v1/categories/:id`: カテゴリー削除
+
+### 追加されたファイル
+
+#### Domain層（+2ファイル）
+- `internal/domain/category.go`: Categoryエンティティ
+- `internal/domain/tag.go`: Tagエンティティ
+- `internal/domain/todo.go`: 拡張（Priority, Status, DueDate等を追加）
+
+#### Repository層（+2ファイル）
+- `internal/repository/category_repository.go`: カテゴリーCRUD実装
+- `internal/repository/tag_repository.go`: タグ管理実装
+- `internal/repository/repository.go`: インターフェース拡張
+- `internal/repository/todo_repository.go`: 新メソッド追加
+
+#### Service層（+1ファイル）
+- `internal/service/category_service.go`: カテゴリー管理ビジネスロジック
+- `internal/service/todo_service.go`: 新メソッド追加
+
+#### Handler層（+1ファイル）
+- `internal/handler/category_handler.go`: カテゴリーHTTPハンドラー
+- `internal/handler/todo_handler.go`: 新エンドポイント追加
+
+#### エントリーポイント
+- `cmd/api/main.go`: 新しい依存性注入とルーティング追加
+
+**Phase 2で追加されたファイル数: 6ファイル**
+**Phase 2で修正されたファイル数: 5ファイル**
+
+### 主な改善点
+
+1. **TODO管理の実用性向上**
+   - 優先度（high/medium/low）でタスクの重要度を管理
+   - 期限（due_date）でデッドラインを設定
+   - ステータス（todo/in_progress/done）で進捗を管理
+   - 詳細説明（description）で詳細情報を記録
+   - サブタスク（parent_todo_id）で階層的なタスク管理
+
+2. **カテゴリー機能**
+   - TODOをカテゴリー別に分類可能
+   - カラーコード付きで視覚的に管理
+   - ユーザーごとに独立したカテゴリー
+
+3. **タグ機能（Phase 3で活用予定）**
+   - Many-to-Many関係でTODOに複数タグを付与可能
+   - タグによる横断的な分類
+
+4. **期限管理機能**
+   - 期限切れTODOの一覧取得
+   - 今日・今週のTODO取得
+   - タスクの優先度付け
+
+### データベーススキーマの変更
+
+**TODOテーブルの拡張**
+```sql
+ALTER TABLE todos ADD COLUMN priority VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE todos ADD COLUMN due_date TIMESTAMPTZ;
+ALTER TABLE todos ADD COLUMN status VARCHAR(20) DEFAULT 'todo';
+ALTER TABLE todos ADD COLUMN description TEXT;
+ALTER TABLE todos ADD COLUMN parent_todo_id INT REFERENCES todos(id);
+ALTER TABLE todos ADD COLUMN category_id INT REFERENCES categories(id);
+```
+
+**新規テーブル**
+- `categories`: カテゴリー管理（id, name, color, user_id）
+- `tags`: タグ管理（id, name）
+- `todo_tags`: TODO-タグ中間テーブル（todo_id, tag_id）
+
+**インデックス追加**
+```sql
+CREATE INDEX idx_todos_status ON todos(status);
+CREATE INDEX idx_todos_priority ON todos(priority);
+CREATE INDEX idx_todos_due_date ON todos(due_date) WHERE due_date IS NOT NULL;
+CREATE INDEX idx_todos_parent ON todos(parent_todo_id) WHERE parent_todo_id IS NOT NULL;
+CREATE INDEX idx_todos_category ON todos(category_id) WHERE category_id IS NOT NULL;
+```
+
+### 技術的なハイライト
+
+1. **条件付きインデックス（Partial Index）**
+   ```sql
+   CREATE INDEX idx_todos_due_date ON todos(due_date) WHERE due_date IS NOT NULL;
+   ```
+   NULL値を除外してインデックスサイズを削減
+
+2. **Many-to-Many関係の実装**
+   ```sql
+   CREATE TABLE todo_tags (
+       todo_id INT REFERENCES todos(id) ON DELETE CASCADE,
+       tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
+       PRIMARY KEY (todo_id, tag_id)
+   );
+   ```
+
+3. **日付範囲クエリの最適化**
+   ```go
+   // 今週のTODO取得
+   query := `
+       SELECT ...
+       FROM todos
+       WHERE user_id = $1
+         AND due_date >= CURRENT_DATE
+         AND due_date < CURRENT_DATE + INTERVAL '7 days'
+         AND status != 'done'
+   `
+   ```
+
+4. **NULL許容フィールドの適切な型使用**
+   ```go
+   type Todo struct {
+       Description  *string    `json:"description"`
+       DueDate      *time.Time `json:"due_date"`
+       CategoryID   *int       `json:"category_id"`
+       ParentTodoID *int       `json:"parent_todo_id"`
+   }
+   ```
+
+### 重要な注意事項
+
+すべてのファイルに以下のコメントを追加：
+```go
+// ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、
+// import pathから "examples/" を削除してください ★★★
+```
+
 ### 次のステップ
 
-Phase 2: TODO機能の拡張に進む準備が整いました。
-- 優先度、期限、ステータス、カテゴリー、タグ機能の追加
-- サブタスク機能の実装
-- 新しいエンドポイントの追加
+Phase 3: 検索・フィルタリング機能の実装準備が整いました。
+- クエリパラメータによる高度な検索
+- 全文検索の実装
+- ページネーション
+- 統計情報API

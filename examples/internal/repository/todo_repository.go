@@ -192,3 +192,108 @@ func (r *todoRepository) DeleteTodoWithAudit(ctx context.Context, todoID, userID
 		return r.deleteTodoInTx(tx, todoID, userID)
 	})
 }
+
+// ============================================================================
+// Phase 2で追加されたメソッド
+// ============================================================================
+
+// UpdateStatus はTODOのステータスを更新
+func (r *todoRepository) UpdateStatus(ctx context.Context, todoID, userID int, status string) error {
+	query := `UPDATE todos SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`
+
+	result, err := r.db.ExecContext(ctx, query, status, todoID, userID)
+	if err != nil {
+		return fmt.Errorf("ステータスの更新に失敗しました: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("更新結果の確認に失敗しました: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+// FindOverdue は期限切れのTODOを取得
+func (r *todoRepository) FindOverdue(userID int) ([]domain.Todo, error) {
+	query := `
+		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos
+		WHERE user_id = $1
+		  AND due_date < NOW()
+		  AND status != 'done'
+		ORDER BY due_date ASC
+	`
+
+	return r.queryTodos(query, userID)
+}
+
+// FindToday は今日が期限のTODOを取得
+func (r *todoRepository) FindToday(userID int) ([]domain.Todo, error) {
+	query := `
+		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos
+		WHERE user_id = $1
+		  AND DATE(due_date) = CURRENT_DATE
+		  AND status != 'done'
+		ORDER BY priority DESC, due_date ASC
+	`
+
+	return r.queryTodos(query, userID)
+}
+
+// FindThisWeek は今週が期限のTODOを取得
+func (r *todoRepository) FindThisWeek(userID int) ([]domain.Todo, error) {
+	query := `
+		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos
+		WHERE user_id = $1
+		  AND due_date >= CURRENT_DATE
+		  AND due_date < CURRENT_DATE + INTERVAL '7 days'
+		  AND status != 'done'
+		ORDER BY due_date ASC, priority DESC
+	`
+
+	return r.queryTodos(query, userID)
+}
+
+// queryTodos は共通のクエリ実行ロジック
+func (r *todoRepository) queryTodos(query string, args ...interface{}) ([]domain.Todo, error) {
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("TODOの取得に失敗しました: %w", err)
+	}
+	defer rows.Close()
+
+	var todos []domain.Todo
+	for rows.Next() {
+		var todo domain.Todo
+		err := rows.Scan(
+			&todo.ID,
+			&todo.Name,
+			&todo.Description,
+			&todo.Status,
+			&todo.Priority,
+			&todo.DueDate,
+			&todo.UserID,
+			&todo.CategoryID,
+			&todo.ParentTodoID,
+			&todo.CreatedAt,
+			&todo.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("TODOのスキャンに失敗しました: %w", err)
+		}
+		todos = append(todos, todo)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("TODOの取得に失敗しました: %w", err)
+	}
+
+	return todos, nil
+}
