@@ -5,6 +5,11 @@
 - AIはプロジェクトディレクトリの直下を原則として編集しない(README.mdやPLAN.mdなどのドキュメントを除く)
 - 終わったタスクについてと進捗状況について切りの良いタイミングでDONE.mdに書き込んでいく
 - コメントは日本語で書くこと
+- **🧪 テストの原則**:
+  - **新しいエンドポイントを追加するたびに、そのエンドポイントの動作確認テストも必ず追加する**
+  - 手動での動作確認に頼らず、自動テストで品質を保証する
+  - 各フェーズの完了時には、そのフェーズで追加された全エンドポイントのテストが存在することを確認する
+  - テストは統合テスト形式で実装し、正常系・異常系の両方をカバーする
 
 ## 📌 現状分析
 
@@ -374,10 +379,49 @@ PUT    /api/v1/categories/:id         # カテゴリー更新
 DELETE /api/v1/categories/:id         # カテゴリー削除
 ```
 
+**2.5 エンドポイントテスト**
+Phase 3に進む前に、Phase 2で実装した全てのエンドポイントが正しく動作することを確認するテストを作成します。
+
+**テスト対象エンドポイント**:
+- [ ] **ユーザー認証**
+  - POST /signup - ユーザー登録
+  - POST /login - ログイン
+- [ ] **TODO基本操作**
+  - GET /api/v1/todos - TODO一覧取得
+  - GET /api/v1/todos/:id - TODO詳細取得
+  - POST /api/v1/todos - TODO作成（優先度、期限、ステータス、説明等を含む）
+  - PUT /api/v1/todos/:id - TODO更新
+  - DELETE /api/v1/todos/:id - TODO削除
+- [ ] **TODO拡張機能**（Phase 2で追加）
+  - POST /api/v1/todos/:id/complete - TODO完了
+  - POST /api/v1/todos/:id/reopen - TODO再開
+  - GET /api/v1/todos/overdue - 期限切れTODO一覧
+  - GET /api/v1/todos/today - 今日のTODO一覧
+  - GET /api/v1/todos/week - 今週のTODO一覧
+- [ ] **カテゴリー機能**（Phase 2で追加）
+  - POST /api/v1/categories - カテゴリー作成
+  - GET /api/v1/categories - カテゴリー一覧取得
+  - GET /api/v1/categories/:id - カテゴリー詳細取得
+  - PUT /api/v1/categories/:id - カテゴリー更新
+  - DELETE /api/v1/categories/:id - カテゴリー削除
+- [ ] **管理者機能**
+  - GET /api/v1/admin/users - 全ユーザー取得（管理者のみ）
+
+**テスト方針**:
+- 統合テストとして実装（実際のDBを使用）
+- 各エンドポイントの正常系と異常系をカバー
+- 認証が必要なエンドポイントでは、JWTトークンの検証もテスト
+- ロールベースアクセス制御（管理者権限）のテスト
+
+**テストファイル**:
+- `examples/tests/integration/endpoint_test.go` - 全エンドポイントのテスト
+- 既存の `integration_test.go` を拡張する形でも可
+
 #### 成果物
 - [ ] 拡張されたTODOモデル
 - [ ] カテゴリー・タグ機能の実装
 - [ ] 新しいエンドポイントのテスト
+- [ ] **全エンドポイントの統合テスト**（Phase 2.5で追加）
 
 ---
 
@@ -438,6 +482,7 @@ Response:
 - [ ] 検索・フィルタリング実装
 - [ ] 全文検索機能
 - [ ] 統計情報API
+- [ ] **全エンドポイントの統合テスト**（検索・フィルタリング・統計API）
 
 ---
 
@@ -494,6 +539,7 @@ DELETE /api/v1/notifications/:id          # 通知削除
 - [ ] 通知システム
 - [ ] リマインダー機能
 - [ ] バックグラウンドジョブ
+- [ ] **全エンドポイントの統合テスト**（通知・リマインダーAPI）
 
 ---
 
@@ -585,6 +631,7 @@ DELETE /api/v1/comments/:id               # コメント削除
 - [ ] メンバー管理
 - [ ] TODO担当機能
 - [ ] コメント機能
+- [ ] **全エンドポイントの統合テスト**（プロジェクト・メンバー・担当・コメントAPI）
 
 ---
 
