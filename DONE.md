@@ -318,6 +318,38 @@ CREATE INDEX idx_todos_category ON todos(category_id) WHERE category_id IS NOT N
    }
    ```
 
+### context.Contextの全面適用（追加修正）
+
+**実施日**: 2026-01-13
+
+**背景**: 当初、書き込み系のみにcontextを使用していたが、読み取り系にもcontextを使うべきというフィードバックを受けて、全DB操作にcontextを適用。
+
+**修正内容**:
+- ✅ 全Repository層のインターフェースにcontext追加
+- ✅ 全Repository層の実装で `db.Query` → `db.QueryContext` に変更
+- ✅ 全Repository層の実装で `db.QueryRow` → `db.QueryRowContext` に変更
+- ✅ 全Repository層の実装で `db.Exec` → `db.ExecContext` に変更
+- ✅ 全Service層のメソッドにcontext引数を追加
+- ✅ 全Handler層で `c.Request.Context()` をServiceに渡すように修正
+
+**修正したメソッド**:
+- `TodoRepository`: FindAll, FindByID, Create, FindOverdue, FindToday, FindThisWeek
+- `UserRepository`: CreateUser, FindUserByEmail, FindAllUsers
+- `CategoryRepository`: FindAll, FindByID
+- `TagRepository`: FindAll, FindByTodoID
+- `TodoService`: GetTodos, GetTodo, GetOverdueTodos, GetTodayTodos, GetThisWeekTodos
+- `AuthService`: Signup, Login
+- `AdminService`: GetAllUsers
+- `CategoryService`: GetCategories, GetCategory
+
+**効果**:
+1. **タイムアウト制御**: 長時間かかるクエリを自動でキャンセル可能
+2. **キャンセル伝播**: HTTPリクエストがキャンセルされたら、DB操作も即座に中断
+3. **リクエストスコープの情報伝播**: トレーシングID、ユーザー情報などをcontextで伝播可能
+4. **一貫性**: すべてのDB操作で統一的なAPIを使用
+
+---
+
 ### 重要な注意事項
 
 すべてのファイルに以下のコメントを追加：
