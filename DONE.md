@@ -478,3 +478,283 @@ Phase 3: 検索・フィルタリング機能の実装準備が整いました�
 - 全文検索の実装
 - ページネーション
 - 統計情報API
+
+---
+
+## Phase 3: 検索・フィルタリング機能（完了: 2026-01-15）
+
+### 実施内容
+
+**3.1 全文検索機能の実装**
+- ✅ PostgreSQLのGINインデックスを使用した全文検索
+- ✅ tsvectorカラムとトリガー関数の追加
+- ✅ 名前と説明文に対する全文検索
+
+**マイグレーションファイル**
+- `db/migrations/000012_add_fulltext_search_index.up.sql`: GINインデックスとトリガー追加
+- `db/migrations/000012_add_fulltext_search_index.down.sql`: ロールバック用
+
+**3.2 高度な検索・フィルタリングAPI**
+- ✅ Repository層に`Search`メソッド実装
+- ✅ Service層に`SearchTodos`メソッド実装
+- ✅ Handler層に`SearchTodos`ハンドラー実装
+- ✅ ルーティングに`GET /api/v1/todos/search`追加
+
+**検索パラメータ**:
+- `status`: ステータスフィルター（todo/in_progress/done）
+- `priority`: 優先度フィルター（low/medium/high）
+- `category_id`: カテゴリーIDフィルター
+- `tag_ids`: タグIDフィルター（配列）
+- `search`: 全文検索キーワード
+- `due_from`: 期限開始日
+- `due_to`: 期限終了日
+- `sort`: ソート項目（due_date/priority/created_at/updated_at）
+- `order`: ソート順（asc/desc）
+- `page`: ページ番号
+- `limit`: 1ページあたりの件数
+
+**レスポンス形式**:
+```json
+{
+  "todos": [...],
+  "total": 100,
+  "page": 1,
+  "limit": 10,
+  "total_pages": 10
+}
+```
+
+**3.3 統計情報API**
+- ✅ Repository層に`GetStatistics`メソッド実装
+- ✅ Service層に`GetStatistics`メソッド実装
+- ✅ Handler層に`GetStatistics`ハンドラー実装
+- ✅ ルーティングに`GET /api/v1/todos/statistics`追加
+
+**統計情報内容**:
+```json
+{
+  "total_count": 100,
+  "status_counts": {
+    "todo": 30,
+    "in_progress": 20,
+    "done": 50
+  },
+  "priority_counts": {
+    "low": 30,
+    "medium": 40,
+    "high": 30
+  },
+  "overdue_count": 10,
+  "due_today_count": 5,
+  "due_this_week_count": 15
+}
+```
+
+**3.4 Domain層の拡張**
+- ✅ `SearchFilters`型を追加（検索条件を表現）
+- ✅ `SearchResult`型を追加（検索結果とページネーション情報）
+- ✅ `Statistics`型を追加（統計情報）
+
+**3.5 統合テストの追加**
+- ✅ TestSearchTodos: 検索機能のテスト（5つのサブテスト）
+  - Filter by priority: 優先度フィルター
+  - Filter by status: ステータスフィルター
+  - Full-text search: 全文検索
+  - Pagination: ページネーション
+  - Sort order: ソート順
+- ✅ TestGetStatistics: 統計情報のテスト
+
+**合計: 23テスト、全てPASS**
+
+### 追加されたファイル
+
+#### マイグレーション（+2ファイル）
+- `db/migrations/000012_add_fulltext_search_index.up.sql`
+- `db/migrations/000012_add_fulltext_search_index.down.sql`
+
+#### Domain層の拡張
+- `internal/domain/todo.go`: SearchFilters, SearchResult, Statistics型を追加
+
+#### Repository層の拡張
+- `internal/repository/repository.go`: TodoRepositoryインターフェースにSearch, GetStatisticsを追加
+- `internal/repository/todo_repository.go`: Search, GetStatisticsメソッドを実装
+
+#### Service層の拡張
+- `internal/service/todo_service.go`: SearchTodos, GetStatisticsメソッドを追加
+
+#### Handler層の拡張
+- `internal/handler/todo_handler.go`: SearchTodos, GetStatisticsハンドラーを追加
+
+#### エントリーポイント
+- `cmd/api/main.go`: 新しいルーティング追加
+
+#### テスト
+- `cmd/api/main_test.go`: TestSearchTodos, TestGetStatisticsを追加
+
+**Phase 3で追加されたコード行数: 約350行**
+
+### 主な改善点
+
+1. **高度な検索機能**
+   - 複数のフィルター条件を組み合わせた検索が可能
+   - ステータス、優先度、カテゴリー、タグ、期限範囲による絞り込み
+   - 動的SQLクエリビルダーによる柔軟な条件構築
+
+2. **全文検索の実装**
+   - PostgreSQLのGINインデックスを活用した高速な全文検索
+   - 名前と説明文を対象とした検索（重み付けA/B）
+   - トリガー関数による自動インデックス更新
+
+3. **ページネーション対応**
+   - 大量データの効率的な表示
+   - ページ番号、件数、総ページ数の情報提供
+   - OFFSETとLIMITによるページング実装
+
+4. **ソート機能**
+   - 複数のソート項目（due_date, priority, created_at, updated_at）
+   - 昇順・降順の指定
+   - デフォルト値（created_at DESC）
+
+5. **統計情報の提供**
+   - ダッシュボード作成に必要な集計情報
+   - ステータス別・優先度別のカウント
+   - 期限関連の集計（期限切れ、今日期限、今週期限）
+
+### 技術的なハイライト
+
+1. **PostgreSQL GINインデックスによる全文検索**
+   ```sql
+   -- tsvector列とトリガー関数
+   ALTER TABLE todos ADD COLUMN search_vector tsvector;
+
+   CREATE OR REPLACE FUNCTION todos_search_vector_update() RETURNS trigger AS $$
+   BEGIN
+     NEW.search_vector :=
+       setweight(to_tsvector('english', COALESCE(NEW.name, '')), 'A') ||
+       setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B');
+     RETURN NEW;
+   END;
+   $$ LANGUAGE plpgsql;
+
+   CREATE TRIGGER todos_search_vector_trigger
+   BEFORE INSERT OR UPDATE ON todos
+   FOR EACH ROW
+   EXECUTE FUNCTION todos_search_vector_update();
+
+   CREATE INDEX idx_todos_search_vector ON todos USING GIN(search_vector);
+   ```
+
+2. **動的SQLクエリビルディング**
+   ```go
+   func (r *todoRepository) Search(ctx context.Context, userID int, filters domain.SearchFilters) (domain.SearchResult, error) {
+       // 条件を動的に構築
+       conditions := []string{"t.user_id = $1"}
+       args := []interface{}{userID}
+       argCount := 1
+
+       if filters.Status != nil {
+           argCount++
+           conditions = append(conditions, fmt.Sprintf("t.status = $%d", argCount))
+           args = append(args, *filters.Status)
+       }
+
+       if filters.Search != "" {
+           argCount++
+           conditions = append(conditions, fmt.Sprintf("t.search_vector @@ plainto_tsquery('english', $%d)", argCount))
+           args = append(args, filters.Search)
+       }
+       // ... 他のフィルター条件
+   }
+   ```
+
+3. **集計クエリのパフォーマンス最適化**
+   ```go
+   // 1つのクエリで複数のカウントを取得
+   statusQuery := `
+       SELECT
+           COUNT(*) as total,
+           COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo_count,
+           COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_count,
+           COUNT(CASE WHEN status = 'done' THEN 1 END) as done_count
+       FROM todos
+       WHERE user_id = $1
+   `
+   ```
+
+4. **ページネーション計算**
+   ```go
+   offset := (filters.Page - 1) * filters.Limit
+   totalPages := (total + filters.Limit - 1) / filters.Limit
+
+   return domain.SearchResult{
+       Todos:      todos,
+       Total:      total,
+       Page:       filters.Page,
+       Limit:      filters.Limit,
+       TotalPages: totalPages,
+   }, nil
+   ```
+
+### API使用例
+
+**検索API**:
+```bash
+# 優先度がhighで未完了のTODOを検索
+GET /api/v1/todos/search?priority=high&status=todo
+
+# 全文検索でキーワードを含むTODOを検索
+GET /api/v1/todos/search?search=meeting
+
+# 複数条件での検索＋ページネーション
+GET /api/v1/todos/search?status=todo&priority=high&page=1&limit=10&sort=due_date&order=asc
+
+# 期限範囲での検索
+GET /api/v1/todos/search?due_from=2026-01-01&due_to=2026-12-31
+
+# カテゴリーでの絞り込み
+GET /api/v1/todos/search?category_id=1
+```
+
+**統計情報API**:
+```bash
+# 統計情報を取得
+GET /api/v1/todos/statistics
+```
+
+### テスト結果
+
+```bash
+=== RUN   TestSearchTodos
+=== RUN   TestSearchTodos/Filter_by_priority
+=== RUN   TestSearchTodos/Filter_by_status
+=== RUN   TestSearchTodos/Full-text_search
+=== RUN   TestSearchTodos/Pagination
+=== RUN   TestSearchTodos/Sort_order
+--- PASS: TestSearchTodos (0.15s)
+    --- PASS: TestSearchTodos/Filter_by_priority (0.00s)
+    --- PASS: TestSearchTodos/Filter_by_status (0.00s)
+    --- PASS: TestSearchTodos/Full-text_search (0.01s)
+    --- PASS: TestSearchTodos/Pagination (0.00s)
+    --- PASS: TestSearchTodos/Sort_order (0.00s)
+=== RUN   TestGetStatistics
+--- PASS: TestGetStatistics (0.20s)
+PASS
+ok  	gin-quickstart/examples/cmd/api	6.485s
+```
+
+**全23テスト、全てPASS**
+
+### 次のステップ
+
+Phase 3が完了しました。以下の機能が実装され、完全に動作しています：
+
+1. ✅ **Phase 1**: レイヤードアーキテクチャへのリファクタリング
+2. ✅ **Phase 2**: TODO機能の拡張（優先度、期限、ステータス、カテゴリー）
+3. ✅ **Phase 3**: 検索・フィルタリング・統計情報
+
+今後の拡張可能性：
+- タグ機能の完全実装（Phase 2で準備済み）
+- サブタスク機能のUI対応
+- リアルタイム通知機能
+- ファイル添付機能
+- コメント機能
