@@ -46,3 +46,41 @@ type UpdateTodoInput struct {
 	ParentTodoID *int      `json:"parent_todo_id"`
 	TagIDs      *[]int     `json:"tag_ids"` // タグIDの配列（NULL可）
 }
+
+// ============================================================================
+// Phase 3で追加された型
+// ============================================================================
+
+// SearchFilters は検索条件を表す
+type SearchFilters struct {
+	Status     *string    `form:"status" binding:"omitempty,oneof=todo in_progress done"`
+	Priority   *string    `form:"priority" binding:"omitempty,oneof=low medium high"`
+	CategoryID *int       `form:"category_id"`
+	TagIDs     []int      `form:"tag_ids"`      // タグID配列
+	Search     string     `form:"search"`       // 全文検索キーワード
+	DueFrom    *time.Time `form:"due_from"`     // 期限開始日
+	DueTo      *time.Time `form:"due_to"`       // 期限終了日
+	Sort       string     `form:"sort"`         // ソート項目（due_date, priority, created_at）
+	Order      string     `form:"order"`        // ソート順（asc, desc）
+	Page       int        `form:"page"`         // ページ番号
+	Limit      int        `form:"limit"`        // 1ページあたりの件数
+}
+
+// SearchResult は検索結果を表す
+type SearchResult struct {
+	Todos      []Todo `json:"todos"`       // TODO一覧
+	Total      int    `json:"total"`       // 総件数
+	Page       int    `json:"page"`        // 現在のページ
+	Limit      int    `json:"limit"`       // 1ページあたりの件数
+	TotalPages int    `json:"total_pages"` // 総ページ数
+}
+
+// Statistics はTODO統計情報を表す
+type Statistics struct {
+	TotalCount       int            `json:"total_count"`        // 総TODO数
+	StatusCounts     map[string]int `json:"status_counts"`      // ステータス別カウント
+	PriorityCounts   map[string]int `json:"priority_counts"`    // 優先度別カウント
+	OverdueCount     int            `json:"overdue_count"`      // 期限切れ数
+	DueTodayCount    int            `json:"due_today_count"`    // 今日期限数
+	DueThisWeekCount int            `json:"due_this_week_count"` // 今週期限数
+}

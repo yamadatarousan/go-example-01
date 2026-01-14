@@ -658,3 +658,164 @@ func createCategory(t *testing.T, router *gin.Engine, token, name, color string)
 	json.Unmarshal(w.Body.Bytes(), &response)
 	return int(response["id"].(float64))
 }
+
+// ============================================================================
+// Phase 3のテスト
+// ============================================================================
+
+// TestSearchTodos は検索エンドポイントのテスト
+func TestSearchTodos(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	// テスト用のTODOを複数作成
+	todos := []string{
+		`{"name": "High priority task", "priority": "high", "status": "todo"}`,
+		`{"name": "Medium priority task", "priority": "medium", "status": "in_progress"}`,
+		`{"name": "Low priority task", "priority": "low", "status": "done"}`,
+		`{"name": "Search test task", "description": "This is a searchable description", "priority": "high", "status": "todo"}`,
+	}
+
+	for _, todoBody := range todos {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+	}
+
+	// テスト1: 優先度フィルター
+	t.Run("Filter by priority", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?priority=high", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+		todos := result["todos"].([]interface{})
+		assert.GreaterOrEqual(t, len(todos), 2) // 最低2件のhigh priorityタスク
+	})
+
+	// テスト2: ステータスフィルター
+	t.Run("Filter by status", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?status=done", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		todos := result["todos"].([]interface{})
+		assert.GreaterOrEqual(t, len(todos), 1) // 最低1件のdoneタスク
+	})
+
+	// テスト3: 全文検索
+	t.Run("Full-text search", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?search=searchable", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+	})
+
+	// テスト4: ページネーション
+	t.Run("Pagination", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?page=1&limit=2", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.Equal(t, float64(1), result["page"])
+		assert.Equal(t, float64(2), result["limit"])
+		todos := result["todos"].([]interface{})
+		assert.LessOrEqual(t, len(todos), 2) // 最大2件
+	})
+
+	// テスト5: ソート順
+	t.Run("Sort order", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?sort=priority&order=desc", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+	})
+}
+
+// TestGetStatistics は統計情報エンドポイントのテスト
+func TestGetStatistics(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	// テスト用のTODOを作成（様々なステータス・優先度）
+	todos := []string{
+		`{"name": "Todo 1", "priority": "high", "status": "todo"}`,
+		`{"name": "Todo 2", "priority": "medium", "status": "in_progress"}`,
+		`{"name": "Todo 3", "priority": "low", "status": "done"}`,
+		`{"name": "Todo 4", "priority": "high", "status": "todo"}`,
+		`{"name": "Todo 5", "priority": "medium", "status": "done"}`,
+	}
+
+	for _, todoBody := range todos {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+	}
+
+	// 統計情報を取得
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/todos/statistics", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var stats map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &stats)
+
+	// 総件数の確認
+	assert.NotNil(t, stats["total_count"])
+	totalCount := int(stats["total_count"].(float64))
+	assert.GreaterOrEqual(t, totalCount, 5)
+
+	// ステータス別カウントの確認
+	statusCounts := stats["status_counts"].(map[string]interface{})
+	assert.NotNil(t, statusCounts["todo"])
+	assert.NotNil(t, statusCounts["in_progress"])
+	assert.NotNil(t, statusCounts["done"])
+	assert.GreaterOrEqual(t, int(statusCounts["todo"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(statusCounts["in_progress"].(float64)), 1)
+	assert.GreaterOrEqual(t, int(statusCounts["done"].(float64)), 2)
+
+	// 優先度別カウントの確認
+	priorityCounts := stats["priority_counts"].(map[string]interface{})
+	assert.NotNil(t, priorityCounts["high"])
+	assert.NotNil(t, priorityCounts["medium"])
+	assert.NotNil(t, priorityCounts["low"])
+	assert.GreaterOrEqual(t, int(priorityCounts["high"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(priorityCounts["medium"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(priorityCounts["low"].(float64)), 1)
+
+	// 期限関連カウントの確認
+	assert.NotNil(t, stats["overdue_count"])
+	assert.NotNil(t, stats["due_today_count"])
+	assert.NotNil(t, stats["due_this_week_count"])
+}

@@ -203,6 +203,10 @@ type TodoRepository interface {
 	FindOverdue(ctx context.Context, userID int) ([]domain.Todo, error)        // 期限切れTODO一覧
 	FindToday(ctx context.Context, userID int) ([]domain.Todo, error)          // 今日のTODO一覧
 	FindThisWeek(ctx context.Context, userID int) ([]domain.Todo, error)       // 今週のTODO一覧
+
+	// Phase 3で追加されたメソッド
+	Search(ctx context.Context, userID int, filters domain.SearchFilters) (domain.SearchResult, error) // 高度な検索
+	GetStatistics(ctx context.Context, userID int) (domain.Statistics, error)                          // 統計情報
 }
 
 // UserRepository はユーザーデータアクセスの層境界インターフェース

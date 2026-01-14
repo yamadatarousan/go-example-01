@@ -244,3 +244,41 @@ func (h *TodoHandler) GetThisWeekTodos(c *gin.Context) error {
 	c.JSON(http.StatusOK, todos)
 	return nil
 }
+
+// ============================================================================
+// Phase 3で追加されたメソッド
+// ============================================================================
+
+// SearchTodos は高度な検索・フィルタリング機能を提供
+func (h *TodoHandler) SearchTodos(c *gin.Context) error {
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	// クエリパラメータをバインド
+	var filters domain.SearchFilters
+	if err := c.ShouldBindQuery(&filters); err != nil {
+		return err
+	}
+
+	result, err := h.todoService.SearchTodos(c.Request.Context(), userID, filters)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, result)
+	return nil
+}
+
+// GetStatistics はTODO統計情報を取得
+func (h *TodoHandler) GetStatistics(c *gin.Context) error {
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	stats, err := h.todoService.GetStatistics(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, stats)
+	return nil
+}

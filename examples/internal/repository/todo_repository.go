@@ -309,3 +309,278 @@ func (r *todoRepository) queryTodos(ctx context.Context, query string, args ...i
 
 	return todos, nil
 }
+
+// ============================================================================
+// Phase 3で追加されたメソッド
+// ============================================================================
+
+// Search は高度な検索・フィルタリング機能
+func (r *todoRepository) Search(ctx context.Context, userID int, filters domain.SearchFilters) (domain.SearchResult, error) {
+	// デフォルト値の設定
+	if filters.Page < 1 {
+		filters.Page = 1
+	}
+	if filters.Limit < 1 {
+		filters.Limit = 10
+	}
+	if filters.Sort == "" {
+		filters.Sort = "created_at"
+	}
+	if filters.Order == "" {
+		filters.Order = "desc"
+	}
+
+	// ベースクエリ
+	baseQuery := `
+		FROM todos t
+		WHERE t.user_id = $1
+	`
+
+	// WHERE条件を動的に構築
+	conditions := []string{"t.user_id = $1"}
+	args := []interface{}{userID}
+	argCount := 1
+
+	// ステータスフィルター
+	if filters.Status != nil {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.status = $%d", argCount))
+		args = append(args, *filters.Status)
+	}
+
+	// 優先度フィルター
+	if filters.Priority != nil {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.priority = $%d", argCount))
+		args = append(args, *filters.Priority)
+	}
+
+	// カテゴリーフィルター
+	if filters.CategoryID != nil {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.category_id = $%d", argCount))
+		args = append(args, *filters.CategoryID)
+	}
+
+	// タグフィルター
+	if len(filters.TagIDs) > 0 {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf(`
+			t.id IN (
+				SELECT todo_id FROM todo_tags WHERE tag_id = ANY($%d)
+			)
+		`, argCount))
+		args = append(args, filters.TagIDs)
+	}
+
+	// 全文検索
+	if filters.Search != "" {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.search_vector @@ plainto_tsquery('english', $%d)", argCount))
+		args = append(args, filters.Search)
+	}
+
+	// 期限範囲フィルター
+	if filters.DueFrom != nil {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.due_date >= $%d", argCount))
+		args = append(args, *filters.DueFrom)
+	}
+	if filters.DueTo != nil {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("t.due_date <= $%d", argCount))
+		args = append(args, *filters.DueTo)
+	}
+
+	// WHERE句を構築
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			whereClause += " AND " + conditions[i]
+		}
+	}
+
+	// 総件数を取得
+	countQuery := "SELECT COUNT(*) " + baseQuery
+	if len(conditions) > 1 {
+		countQuery = "SELECT COUNT(*) FROM todos t " + whereClause
+	}
+
+	var total int
+	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return domain.SearchResult{}, fmt.Errorf("総件数の取得に失敗しました: %w", err)
+	}
+
+	// ソート順の検証
+	allowedSorts := map[string]bool{
+		"due_date":   true,
+		"priority":   true,
+		"created_at": true,
+		"updated_at": true,
+	}
+	if !allowedSorts[filters.Sort] {
+		filters.Sort = "created_at"
+	}
+	if filters.Order != "asc" && filters.Order != "desc" {
+		filters.Order = "desc"
+	}
+
+	// データ取得クエリ
+	offset := (filters.Page - 1) * filters.Limit
+	dataQuery := fmt.Sprintf(`
+		SELECT t.id, t.name, t.description, t.status, t.priority, t.due_date,
+		       t.user_id, t.category_id, t.parent_todo_id, t.created_at, t.updated_at
+		FROM todos t
+		%s
+		ORDER BY t.%s %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, filters.Sort, filters.Order, argCount+1, argCount+2)
+
+	args = append(args, filters.Limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, dataQuery, args...)
+	if err != nil {
+		return domain.SearchResult{}, fmt.Errorf("TODOの取得に失敗しました: %w", err)
+	}
+	defer rows.Close()
+
+	var todos []domain.Todo
+	for rows.Next() {
+		var todo domain.Todo
+		err := rows.Scan(
+			&todo.ID,
+			&todo.Name,
+			&todo.Description,
+			&todo.Status,
+			&todo.Priority,
+			&todo.DueDate,
+			&todo.UserID,
+			&todo.CategoryID,
+			&todo.ParentTodoID,
+			&todo.CreatedAt,
+			&todo.UpdatedAt,
+		)
+		if err != nil {
+			return domain.SearchResult{}, fmt.Errorf("TODOのスキャンに失敗しました: %w", err)
+		}
+		todos = append(todos, todo)
+	}
+
+	if err = rows.Err(); err != nil {
+		return domain.SearchResult{}, fmt.Errorf("TODOの取得に失敗しました: %w", err)
+	}
+
+	// 総ページ数を計算
+	totalPages := (total + filters.Limit - 1) / filters.Limit
+
+	return domain.SearchResult{
+		Todos:      todos,
+		Total:      total,
+		Page:       filters.Page,
+		Limit:      filters.Limit,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// GetStatistics はTODO統計情報を取得
+func (r *todoRepository) GetStatistics(ctx context.Context, userID int) (domain.Statistics, error) {
+	var stats domain.Statistics
+
+	// 総件数とステータス別カウント
+	statusQuery := `
+		SELECT
+			COUNT(*) as total,
+			COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo_count,
+			COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_count,
+			COUNT(CASE WHEN status = 'done' THEN 1 END) as done_count
+		FROM todos
+		WHERE user_id = $1
+	`
+
+	var todoCount, inProgressCount, doneCount int
+	err := r.db.QueryRowContext(ctx, statusQuery, userID).Scan(
+		&stats.TotalCount,
+		&todoCount,
+		&inProgressCount,
+		&doneCount,
+	)
+	if err != nil {
+		return stats, fmt.Errorf("ステータス別カウントの取得に失敗しました: %w", err)
+	}
+
+	stats.StatusCounts = map[string]int{
+		"todo":        todoCount,
+		"in_progress": inProgressCount,
+		"done":        doneCount,
+	}
+
+	// 優先度別カウント
+	priorityQuery := `
+		SELECT
+			COUNT(CASE WHEN priority = 'low' THEN 1 END) as low_count,
+			COUNT(CASE WHEN priority = 'medium' THEN 1 END) as medium_count,
+			COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_count
+		FROM todos
+		WHERE user_id = $1
+	`
+
+	var lowCount, mediumCount, highCount int
+	err = r.db.QueryRowContext(ctx, priorityQuery, userID).Scan(
+		&lowCount,
+		&mediumCount,
+		&highCount,
+	)
+	if err != nil {
+		return stats, fmt.Errorf("優先度別カウントの取得に失敗しました: %w", err)
+	}
+
+	stats.PriorityCounts = map[string]int{
+		"low":    lowCount,
+		"medium": mediumCount,
+		"high":   highCount,
+	}
+
+	// 期限切れカウント
+	overdueQuery := `
+		SELECT COUNT(*)
+		FROM todos
+		WHERE user_id = $1
+		  AND due_date < NOW()
+		  AND status != 'done'
+	`
+	err = r.db.QueryRowContext(ctx, overdueQuery, userID).Scan(&stats.OverdueCount)
+	if err != nil {
+		return stats, fmt.Errorf("期限切れカウントの取得に失敗しました: %w", err)
+	}
+
+	// 今日期限カウント
+	todayQuery := `
+		SELECT COUNT(*)
+		FROM todos
+		WHERE user_id = $1
+		  AND DATE(due_date) = CURRENT_DATE
+		  AND status != 'done'
+	`
+	err = r.db.QueryRowContext(ctx, todayQuery, userID).Scan(&stats.DueTodayCount)
+	if err != nil {
+		return stats, fmt.Errorf("今日期限カウントの取得に失敗しました: %w", err)
+	}
+
+	// 今週期限カウント
+	weekQuery := `
+		SELECT COUNT(*)
+		FROM todos
+		WHERE user_id = $1
+		  AND due_date >= CURRENT_DATE
+		  AND due_date < CURRENT_DATE + INTERVAL '7 days'
+		  AND status != 'done'
+	`
+	err = r.db.QueryRowContext(ctx, weekQuery, userID).Scan(&stats.DueThisWeekCount)
+	if err != nil {
+		return stats, fmt.Errorf("今週期限カウントの取得に失敗しました: %w", err)
+	}
+
+	return stats, nil
+}
