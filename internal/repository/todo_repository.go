@@ -20,7 +20,10 @@ func NewTodoRepository(db *sql.DB) TodoRepository {
 
 // FindAll は指定されたユーザーの全てのTODOを取得
 func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT id, name, user_id FROM todos WHERE user_id = $1", userID)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos WHERE user_id = $1
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -39,27 +42,30 @@ func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo
 	return todos, nil
 }
 
-// FindByID は指定されたIDのTODOを取得
+// FindByID は指定されたIDのTODOを取得（Phase 2拡張フィールド含む）
 func (r *todoRepository) FindByID(ctx context.Context, todoID, userID int) (domain.Todo, error) {
 	var todo domain.Todo
 	err := r.db.QueryRowContext(
 		ctx,
-		"SELECT id, name, user_id FROM todos WHERE id = $1 AND user_id = $2",
+		`SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos WHERE id = $1 AND user_id = $2`,
 		todoID, userID,
-	).Scan(&todo.ID, &todo.Name, &todo.UserID)
+	).Scan(&todo.ID, &todo.Name, &todo.Description, &todo.Status, &todo.Priority, &todo.DueDate, &todo.UserID, &todo.CategoryID, &todo.ParentTodoID, &todo.CreatedAt, &todo.UpdatedAt)
 	if err != nil {
 		return todo, err
 	}
 	return todo, nil
 }
 
-// Create はTODOを作成
+// Create はTODOを作成（Phase 2拡張フィールド含む）
 func (r *todoRepository) Create(ctx context.Context, todo domain.Todo) (domain.Todo, error) {
 	var id int
 	err := r.db.QueryRowContext(
 		ctx,
-		"INSERT INTO todos (name, user_id) VALUES ($1, $2) RETURNING id",
-		todo.Name, todo.UserID,
+		`INSERT INTO todos (name, user_id, priority, status, description, due_date, category_id, parent_todo_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id`,
+		todo.Name, todo.UserID, todo.Priority, todo.Status, todo.Description, todo.DueDate, todo.CategoryID, todo.ParentTodoID,
 	).Scan(&id)
 	if err != nil {
 		return todo, err
@@ -92,9 +98,13 @@ func (r *todoRepository) execTx(ctx context.Context, fn func(*sql.Tx) error) err
 
 // createTodoInTx はトランザクション内でTODOと監査ログを作成
 func (r *todoRepository) createTodoInTx(tx *sql.Tx, todo domain.Todo) (domain.Todo, error) {
-	// 1. todosテーブルに新しいTODOを挿入し、IDを取得
+	// 1. todosテーブルに新しいTODOを挿入し、IDを取得（Phase 2拡張フィールド含む）
 	var id int
-	err := tx.QueryRow("INSERT INTO todos (name, user_id) VALUES ($1, $2) RETURNING id", todo.Name, todo.UserID).Scan(&id)
+	err := tx.QueryRow(`
+		INSERT INTO todos (name, user_id, priority, status, description, due_date, category_id, parent_todo_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`, todo.Name, todo.UserID, todo.Priority, todo.Status, todo.Description, todo.DueDate, todo.CategoryID, todo.ParentTodoID).Scan(&id)
 	if err != nil {
 		return todo, err
 	}

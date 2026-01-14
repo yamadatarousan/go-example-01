@@ -32,12 +32,10 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) error {
 	}
 
 	// JWTから取得したユーザーIDを使用
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return service.ErrUnauthorized
-	}
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-	created, err := h.categoryService.CreateCategory(c.Request.Context(), userID.(int), input)
+	created, err := h.categoryService.CreateCategory(c.Request.Context(), userID, input)
 	if err != nil {
 		return err
 	}
@@ -48,12 +46,10 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) error {
 
 // GetCategories はユーザーの全カテゴリーを取得
 func (h *CategoryHandler) GetCategories(c *gin.Context) error {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return service.ErrUnauthorized
-	}
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-	categories, err := h.categoryService.GetCategories(c.Request.Context(), userID.(int))
+	categories, err := h.categoryService.GetCategories(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -69,12 +65,10 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) error {
 		return domain.ErrInvalidInput
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return service.ErrUnauthorized
-	}
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-	category, err := h.categoryService.GetCategory(c.Request.Context(), categoryID, userID.(int))
+	category, err := h.categoryService.GetCategory(c.Request.Context(), categoryID, userID)
 	if err != nil {
 		return err
 	}
@@ -95,12 +89,10 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) error {
 		return err
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return service.ErrUnauthorized
-	}
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-	updated, err := h.categoryService.UpdateCategory(c.Request.Context(), categoryID, userID.(int), input)
+	updated, err := h.categoryService.UpdateCategory(c.Request.Context(), categoryID, userID, input)
 	if err != nil {
 		return err
 	}
@@ -116,12 +108,10 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) error {
 		return domain.ErrInvalidInput
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return service.ErrUnauthorized
-	}
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
 
-	err = h.categoryService.DeleteCategory(c.Request.Context(), categoryID, userID.(int))
+	err = h.categoryService.DeleteCategory(c.Request.Context(), categoryID, userID)
 	if err != nil {
 		return err
 	}

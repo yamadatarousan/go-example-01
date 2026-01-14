@@ -168,7 +168,13 @@ func (h *TodoHandler) CompleteTodo(c *gin.Context) error {
 		return err
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Todo completed successfully"})
+	// 更新されたTODOを取得して返す
+	todo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, todo)
 	return nil
 }
 
@@ -187,7 +193,13 @@ func (h *TodoHandler) ReopenTodo(c *gin.Context) error {
 		return err
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Todo reopened successfully"})
+	// 更新されたTODOを取得して返す
+	todo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, todo)
 	return nil
 }
 
