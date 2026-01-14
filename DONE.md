@@ -358,6 +358,119 @@ CREATE INDEX idx_todos_category ON todos(category_id) WHERE category_id IS NOT N
 // import pathから "examples/" を削除してください ★★★
 ```
 
+---
+
+## Phase 2.5: 全エンドポイントの統合テスト（完了: 2026-01-14）
+
+### 実施内容
+
+**背景**: Phase 3に進む前に、Phase 1およびPhase 2で実装された全エンドポイントが正しく動作することを確認するため、統合テストを作成しました。
+
+**2.5.1 統合テストの実装**
+- ✅ テストフレームワークの構築（TestMain、setupTestRouter）
+- ✅ 全21個のエンドポイントのテスト実装
+- ✅ テスト用DBのセットアップ（docker-compose.test.yml使用）
+- ✅ マイグレーション自動実行
+- ✅ シードデータのロード
+
+**テスト対象エンドポイント**:
+
+1. **ユーザー認証** (3テスト)
+   - TestSignup: ユーザー登録
+   - TestLoginSuccess: ログイン成功
+   - TestLoginFailure: ログイン失敗
+
+2. **TODO基本CRUD** (6テスト)
+   - TestGetTodos: TODO一覧取得
+   - TestGetTodo: TODO詳細取得
+   - TestGetTodoNotFound: 存在しないTODO取得（404）
+   - TestCreateTodoWithExtendedFields: 拡張フィールド含むTODO作成
+   - TestUpdateTodo: TODO更新
+   - TestDeleteTodo: TODO削除
+
+3. **TODO拡張機能**（Phase 2追加、5テスト）
+   - TestCompleteTodo: TODO完了
+   - TestReopenTodo: TODO再開
+   - TestGetOverdueTodos: 期限切れTODO一覧
+   - TestGetTodayTodos: 今日のTODO一覧
+   - TestGetThisWeekTodos: 今週のTODO一覧
+
+4. **カテゴリーCRUD**（Phase 2追加、5テスト）
+   - TestCreateCategory: カテゴリー作成
+   - TestGetCategories: カテゴリー一覧取得
+   - TestGetCategory: カテゴリー詳細取得
+   - TestUpdateCategory: カテゴリー更新
+   - TestDeleteCategory: カテゴリー削除
+
+5. **管理者機能** (2テスト)
+   - TestGetAllUsersAsAdmin: 管理者による全ユーザー取得
+   - TestGetAllUsersAsForbidden: 一般ユーザーによるアクセス拒否（403）
+
+**合計: 21テスト、全てPASS**
+
+**2.5.2 実装中に発見・修正した問題**
+
+1. **created_at/updated_atカラムの不足**
+   - 問題: TODOsテーブルにタイムスタンプカラムが存在しなかった
+   - 修正: マイグレーション000011を追加してカラムを作成
+
+2. **category_handler.goの認証エラー**
+   - 問題: `c.Get("user_id")`を使用していたが、ミドルウェアは`claims`をセット
+   - 修正: 他のハンドラーと同様に`c.MustGet("claims").(*service.AppClaims)`パターンに変更
+
+3. **Complete/Reopenエンドポイントのレスポンス**
+   - 問題: メッセージのみ返していたため、テストでstatusフィールドを確認できない
+   - 修正: 更新後のTODOオブジェクト全体を返すように変更
+
+4. **TODO作成時の拡張フィールド**
+   - 問題: INSERTで`name`と`user_id`のみ挿入していた
+   - 修正: Phase 2フィールド（priority, status, description, due_date, category_id, parent_todo_id）も挿入するように変更
+
+5. **TODO取得時の拡張フィールド**
+   - 問題: FindByID/FindAllで`id, name, user_id`のみ取得していた
+   - 修正: Phase 2フィールドと`created_at, updated_at`も取得するように変更
+
+**2.5.3 作成ファイル**
+- `examples/cmd/api/main_test.go`: 全エンドポイントの統合テスト（約680行）
+- `db/migrations/000011_add_timestamps_to_todos.up.sql`: タイムスタンプカラム追加
+- `db/migrations/000011_add_timestamps_to_todos.down.sql`: ロールバック用
+
+**2.5.4 修正ファイル**
+- `examples/internal/handler/category_handler.go`: 認証方法をclaims取得に統一
+- `examples/internal/handler/todo_handler.go`: Complete/Reopenレスポンスを更新
+- `examples/internal/repository/todo_repository.go`: Create/FindByID/FindAllをPhase 2フィールド対応
+
+### 主な改善点
+
+1. **テストの自動化**
+   - 手動での動作確認が不要になった
+   - 全エンドポイントの動作を数秒で検証可能
+   - リグレッション（機能の退行）を防ぐ
+
+2. **バグの早期発見**
+   - 実装中に5つの問題を発見・修正
+   - Phase 2で追加したフィールドが正しく保存・取得されることを確認
+
+3. **コードの品質向上**
+   - データベース操作の一貫性を確保（全操作でPhase 2フィールドを扱う）
+   - エラーハンドリングの統一（401, 403, 404のテスト）
+
+4. **開発速度の向上**
+   - 新機能追加時にテストを追加することで、既存機能への影響を即座に確認可能
+   - テストがドキュメントの役割も果たす（エンドポイントの使い方が明確）
+
+### テスト実行方法
+
+```bash
+# examples/cmd/api ディレクトリで実行
+cd examples/cmd/api
+go test -v -timeout 5m
+
+# 特定のテストのみ実行
+go test -v -run TestComplete
+go test -v -run "TestGet.*Todos"
+```
+
 ### 次のステップ
 
 Phase 3: 検索・フィルタリング機能の実装準備が整いました。
