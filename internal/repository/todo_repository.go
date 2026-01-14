@@ -18,7 +18,7 @@ func NewTodoRepository(db *sql.DB) TodoRepository {
 	return &todoRepository{db: db}
 }
 
-// FindAll は指定されたユーザーの全てのTODOを取得
+// FindAll は指定されたユーザーの全てのTODOを取得（Phase 2拡張フィールド含む）
 func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
@@ -32,7 +32,7 @@ func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo
 	var todos []domain.Todo
 	for rows.Next() {
 		var todo domain.Todo
-		err := rows.Scan(&todo.ID, &todo.Name, &todo.UserID)
+		err := rows.Scan(&todo.ID, &todo.Name, &todo.Description, &todo.Status, &todo.Priority, &todo.DueDate, &todo.UserID, &todo.CategoryID, &todo.ParentTodoID, &todo.CreatedAt, &todo.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
