@@ -38,23 +38,28 @@ func main() {
 	// Repository層
 	todoRepo := repository.NewTodoRepository(db)
 	userRepo := repository.NewUserRepository(db)
-	categoryRepo := repository.NewCategoryRepository(db) // Phase 2で追加
+	categoryRepo := repository.NewCategoryRepository(db)       // Phase 2で追加
+	notificationRepo := repository.NewNotificationRepository(db) // Phase 4で追加
+	reminderRepo := repository.NewReminderRepository(db)       // Phase 4で追加
 	// tagRepo := repository.NewTagRepository(db)         // Phase 2で追加（Phase 3で使用）
 
 	// Service層
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
-	categoryService := service.NewCategoryService(categoryRepo) // Phase 2で追加
+	categoryService := service.NewCategoryService(categoryRepo)                // Phase 2で追加
+	notificationService := service.NewNotificationService(notificationRepo)     // Phase 4で追加
+	_ = service.NewReminderService(reminderRepo, notificationRepo, todoRepo) // Phase 4で追加（将来のバックグラウンドワーカー用）
 
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
 	todoHandler := handler.NewTodoHandler(todoService)
 	adminHandler := handler.NewAdminHandler(adminService)
-	categoryHandler := handler.NewCategoryHandler(categoryService) // Phase 2で追加
+	categoryHandler := handler.NewCategoryHandler(categoryService)       // Phase 2で追加
+	notificationHandler := handler.NewNotificationHandler(notificationService) // Phase 4で追加
 
 	// ルーターの設定
-	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler)
+	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler)
 
 	// Graceful Shutdownの実装
 	srv := &http.Server{
@@ -111,7 +116,8 @@ func setupRouter(
 	userHandler *handler.UserHandler,
 	todoHandler *handler.TodoHandler,
 	adminHandler *handler.AdminHandler,
-	categoryHandler *handler.CategoryHandler, // Phase 2で追加
+	categoryHandler *handler.CategoryHandler,       // Phase 2で追加
+	notificationHandler *handler.NotificationHandler, // Phase 4で追加
 ) *gin.Engine {
 	router := gin.New()
 
@@ -180,6 +186,13 @@ func setupRouter(
 		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))      // カテゴリー取得
 		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))   // カテゴリー更新
 		v1.DELETE("/categories/:id", handler.ErrorHandler(categoryHandler.DeleteCategory)) // カテゴリー削除
+
+		// 通知エンドポイント（Phase 4で追加）
+		v1.GET("/notifications", handler.ErrorHandler(notificationHandler.GetNotifications))           // 通知一覧
+		v1.GET("/notifications/unread", handler.ErrorHandler(notificationHandler.GetUnreadNotifications)) // 未読通知
+		v1.PUT("/notifications/:id/read", handler.ErrorHandler(notificationHandler.MarkNotificationAsRead)) // 既読にする
+		v1.PUT("/notifications/read-all", handler.ErrorHandler(notificationHandler.MarkAllNotificationsAsRead)) // 全て既読
+		v1.DELETE("/notifications/:id", handler.ErrorHandler(notificationHandler.DeleteNotification))  // 通知削除
 
 		// 管理者専用エンドポイント
 		adminRoutes := v1.Group("/admin")

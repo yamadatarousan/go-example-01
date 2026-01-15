@@ -758,3 +758,259 @@ Phase 3が完了しました。以下の機能が実装され、完全に動作�
 - リアルタイム通知機能
 - ファイル添付機能
 - コメント機能
+
+---
+
+## Phase 4: 通知・リマインダー機能（完了: 2026-01-15）
+
+### 実施内容
+
+**4.1 データベースマイグレーション**
+- ✅ 通知テーブルの作成（notifications）
+- ✅ リマインダーテーブルの作成（reminders）
+- ✅ パフォーマンス向上のためのインデックス追加
+
+**マイグレーションファイル（4ファイル）**
+- `db/migrations/000013_create_notifications_table.up/down.sql`
+- `db/migrations/000014_create_reminders_table.up/down.sql`
+
+**4.2 Domain層の拡張**
+- ✅ Notificationエンティティの追加
+- ✅ Reminderエンティティの追加
+- ✅ CreateNotificationInput / CreateReminderInputの追加
+
+**4.3 Repository層の実装**
+- ✅ NotificationRepository の実装（CRUD操作）
+  - `Create`: 通知作成
+  - `FindAll`: ユーザーの全通知取得
+  - `FindUnread`: 未読通知取得
+  - `MarkAsRead`: 通知を既読にする
+  - `MarkAllAsRead`: 全通知を既読にする
+  - `Delete`: 通知削除
+- ✅ ReminderRepository の実装
+  - `Create`: リマインダー作成
+  - `FindByTodoID`: TODOに紐づくリマインダー取得
+  - `FindPending`: 送信待ちリマインダー取得
+  - `MarkAsSent`: リマインダーを送信済みにする
+  - `Delete`: リマインダー削除
+
+**4.4 Service層の実装**
+- ✅ NotificationService の実装
+  - 通知のCRUD操作をラップ
+- ✅ ReminderService の実装
+  - `ProcessPendingReminders`: バックグラウンドワーカー用のリマインダー処理メソッド
+
+**4.5 Handler層の実装**
+- ✅ NotificationHandler の実装（5つのエンドポイント）
+  - `GET /api/v1/notifications`: 通知一覧取得
+  - `GET /api/v1/notifications/unread`: 未読通知取得
+  - `PUT /api/v1/notifications/:id/read`: 通知を既読にする
+  - `PUT /api/v1/notifications/read-all`: 全通知を既読にする
+  - `DELETE /api/v1/notifications/:id`: 通知削除
+
+**4.6 統合テストの追加**
+- ✅ TestGetNotifications: 通知一覧取得のテスト
+- ✅ TestGetUnreadNotifications: 未読通知取得のテスト
+- ✅ TestMarkNotificationAsRead: 通知既読化のテスト
+- ✅ TestMarkAllNotificationsAsRead: 全通知既読化のテスト
+- ✅ TestDeleteNotification: 通知削除のテスト
+- ✅ TestMarkNotificationAsReadUnauthorized: 他ユーザーの通知へのアクセス拒否テスト
+- ✅ TestDeleteNotificationUnauthorized: 他ユーザーの通知削除拒否テスト
+- ✅ createNotification: 通知作成ヘルパー関数
+
+**合計: 31テスト、全てPASS**
+
+### 追加されたファイル
+
+#### マイグレーション（+4ファイル）
+- `db/migrations/000013_create_notifications_table.up.sql`
+- `db/migrations/000013_create_notifications_table.down.sql`
+- `db/migrations/000014_create_reminders_table.up.sql`
+- `db/migrations/000014_create_reminders_table.down.sql`
+
+#### Domain層（+2ファイル）
+- `internal/domain/notification.go`: Notificationエンティティ、CreateNotificationInput
+- `internal/domain/reminder.go`: Reminderエンティティ、CreateReminderInput
+
+#### Repository層（+2ファイル）
+- `internal/repository/notification_repository.go`: 通知CRUD実装
+- `internal/repository/reminder_repository.go`: リマインダー管理実装
+- `internal/repository/repository.go`: NotificationRepository, ReminderRepositoryインターフェース追加
+
+#### Service層（+2ファイル）
+- `internal/service/notification_service.go`: 通知ビジネスロジック
+- `internal/service/reminder_service.go`: リマインダービジネスロジック（ProcessPendingReminders含む）
+
+#### Handler層（+1ファイル）
+- `internal/handler/notification_handler.go`: 通知HTTPハンドラー
+
+#### エントリーポイント
+- `cmd/api/main.go`: 新しい依存性注入とルーティング追加
+
+#### テスト
+- `cmd/api/main_test.go`: 8つの通知テストを追加
+
+**Phase 4で追加されたファイル数: 11ファイル**
+**Phase 4で修正されたファイル数: 3ファイル**
+
+### 主な改善点
+
+1. **通知システムの実装**
+   - 3種類の通知タイプ（deadline_reminder, todo_assigned, todo_completed）
+   - ユーザーごとの通知管理
+   - 既読/未読ステータスの管理
+   - TODO紐付けによる関連情報の管理
+
+2. **リマインダー機能の基盤**
+   - TODOに対するリマインダー設定
+   - 送信待ちリマインダーの管理
+   - バックグラウンドワーカー用のProcessPendingRemindersメソッド
+   - 自動通知作成機能
+
+3. **セキュリティ**
+   - ユーザー所有権の検証（他ユーザーの通知にアクセス不可）
+   - JWTクレームを使用した認証
+   - 404エラーによる情報漏洩防止
+
+4. **データベース設計**
+   - 通知とTODOの外部キー制約（CASCADE削除）
+   - リマインダーの効率的な検索（部分インデックス）
+   - GINインデックスによる高速な通知タイプ検索
+
+### データベーススキーマ
+
+**通知テーブル（notifications）**
+```sql
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    todo_id INT REFERENCES todos(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,  -- 'deadline_reminder', 'todo_assigned', 'todo_completed'
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX idx_notifications_todo ON notifications(todo_id) WHERE todo_id IS NOT NULL;
+```
+
+**リマインダーテーブル（reminders）**
+```sql
+CREATE TABLE IF NOT EXISTS reminders (
+    id SERIAL PRIMARY KEY,
+    todo_id INT NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
+    remind_at TIMESTAMPTZ NOT NULL,
+    is_sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_reminders_pending ON reminders(is_sent, remind_at) WHERE is_sent = FALSE;
+CREATE INDEX idx_reminders_todo ON reminders(todo_id);
+```
+
+### 技術的なハイライト
+
+1. **部分インデックスによる最適化**
+   ```sql
+   -- 送信待ちリマインダーのみをインデックス化
+   CREATE INDEX idx_reminders_pending ON reminders(is_sent, remind_at) WHERE is_sent = FALSE;
+
+   -- TODO紐付けのある通知のみをインデックス化
+   CREATE INDEX idx_notifications_todo ON notifications(todo_id) WHERE todo_id IS NOT NULL;
+   ```
+
+2. **バックグラウンドワーカー用の設計**
+   ```go
+   // ProcessPendingReminders は送信待ちリマインダーを処理して通知を作成
+   func (s *ReminderService) ProcessPendingReminders(ctx context.Context) error {
+       reminders, err := s.reminderRepo.FindPending(ctx)
+       // 各リマインダーに対して:
+       // 1. TODOを取得
+       // 2. 通知を作成
+       // 3. リマインダーを送信済みにする
+       // エラーが発生しても処理を継続
+   }
+   ```
+
+3. **ユーザー所有権の検証**
+   ```go
+   // NotificationRepositoryでは全操作にuser_id条件を含める
+   func (r *notificationRepository) MarkAsRead(ctx context.Context, notificationID, userID int) error {
+       query := `UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2`
+       // rowsAffected == 0 の場合は ErrNotFound を返す
+   }
+   ```
+
+4. **複合インデックスによる高速クエリ**
+   ```sql
+   -- 未読通知の取得を高速化
+   CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
+   ```
+
+### API使用例
+
+**通知API**:
+```bash
+# 全通知を取得
+GET /api/v1/notifications
+Authorization: Bearer <token>
+
+# 未読通知のみ取得
+GET /api/v1/notifications/unread
+Authorization: Bearer <token>
+
+# 特定の通知を既読にする
+PUT /api/v1/notifications/123/read
+Authorization: Bearer <token>
+
+# 全通知を既読にする
+PUT /api/v1/notifications/read-all
+Authorization: Bearer <token>
+
+# 通知を削除
+DELETE /api/v1/notifications/123
+Authorization: Bearer <token>
+```
+
+### テスト結果
+
+```bash
+=== RUN   TestGetNotifications
+--- PASS: TestGetNotifications (0.08s)
+=== RUN   TestGetUnreadNotifications
+--- PASS: TestGetUnreadNotifications (0.09s)
+=== RUN   TestMarkNotificationAsRead
+--- PASS: TestMarkNotificationAsRead (0.09s)
+=== RUN   TestMarkAllNotificationsAsRead
+--- PASS: TestMarkAllNotificationsAsRead (0.09s)
+=== RUN   TestDeleteNotification
+--- PASS: TestDeleteNotification (0.09s)
+=== RUN   TestMarkNotificationAsReadUnauthorized
+--- PASS: TestMarkNotificationAsReadUnauthorized (0.08s)
+=== RUN   TestDeleteNotificationUnauthorized
+--- PASS: TestDeleteNotificationUnauthorized (0.08s)
+PASS
+ok  	gin-quickstart/examples/cmd/api	6.789s
+```
+
+**全31テスト、全てPASS**
+
+### 次のステップ
+
+Phase 4が完了しました。以下の機能が実装され、完全に動作しています：
+
+1. ✅ **Phase 1**: レイヤードアーキテクチャへのリファクタリング
+2. ✅ **Phase 2**: TODO機能の拡張（優先度、期限、ステータス、カテゴリー）
+3. ✅ **Phase 3**: 検索・フィルタリング・統計情報
+4. ✅ **Phase 4**: 通知・リマインダー機能
+
+今後の拡張可能性：
+- バックグラウンドワーカーの実装（ReminderService.ProcessPendingRemindersを定期実行）
+- WebSocketによるリアルタイム通知
+- メール通知の送信
+- タグ機能の完全実装（Phase 2で準備済み）
+- サブタスク機能のUI対応
+- ファイル添付機能
+- コメント機能
