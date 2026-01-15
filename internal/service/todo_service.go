@@ -72,3 +72,17 @@ func (s *TodoService) GetTodayTodos(ctx context.Context, userID int) ([]domain.T
 func (s *TodoService) GetThisWeekTodos(ctx context.Context, userID int) ([]domain.Todo, error) {
 	return s.todoRepo.FindThisWeek(ctx, userID)
 }
+
+// ============================================================================
+// Phase 3で追加されたメソッド
+// ============================================================================
+
+// SearchTodos は高度な検索・フィルタリング機能を提供
+func (s *TodoService) SearchTodos(ctx context.Context, userID int, filters domain.SearchFilters) (domain.SearchResult, error) {
+	return s.todoRepo.Search(ctx, userID, filters)
+}
+
+// GetStatistics はTODO統計情報を取得
+func (s *TodoService) GetStatistics(ctx context.Context, userID int) (domain.Statistics, error) {
+	return s.todoRepo.GetStatistics(ctx, userID)
+}

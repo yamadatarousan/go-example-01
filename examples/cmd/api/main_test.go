@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,13 +29,43 @@ import (
 
 var testDB *sql.DB
 
+// getProjectRoot はgo.modファイルを探してプロジェクトルートを特定します。
+// これにより、examples/cmd/api でもcmd/api でも同じコードで動作します。
+func getProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Could not get working directory: %v", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	log.Fatal("Could not find project root (go.mod not found)")
+	return ""
+}
+
 // TestMainは、パッケージ内のテストが実行される前に一度だけ呼ばれる特別な関数です。
 func TestMain(m *testing.M) {
+	// プロジェクトルートを取得
+	// ★ これにより、examples/cmd/api でもcmd/api でも同じコードで動作します
+	projectRoot := getProjectRoot()
+	dockerComposePath := filepath.Join(projectRoot, "docker-compose.test.yml")
+	migrationsPath := filepath.Join(projectRoot, "db", "migrations")
+	seedDataPath := filepath.Join(projectRoot, "testdata", "seed.sql")
+
 	// --- セットアップ ---
 	log.Println("Spinning up test database...")
 	// --waitフラグでhealthcheckが通るまで待機
-	// ★ プロジェクトルート直下のdocker-compose.test.ymlを参照（examples配下でも同じ）
-	cmd := exec.Command("docker-compose", "-f", "../../../docker-compose.test.yml", "up", "-d", "--wait")
+	// ★ プロジェクトルート直下のdocker-compose.test.ymlを参照（常に同じファイルを使用）
+	cmd := exec.Command("docker-compose", "-f", dockerComposePath, "up", "-d", "--wait")
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("Could not start test database: %v", err)
 	}
@@ -42,7 +73,7 @@ func TestMain(m *testing.M) {
 	// deferでテスト終了時に必ずDBコンテナとボリュームを破棄する
 	defer func() {
 		log.Println("Tearing down test database and volumes...")
-		cmd := exec.Command("docker-compose", "-f", "../../../docker-compose.test.yml", "down", "-v")
+		cmd := exec.Command("docker-compose", "-f", dockerComposePath, "down", "-v")
 		if err := cmd.Run(); err != nil {
 			log.Printf("Could not stop test database: %v", err)
 		}
@@ -71,22 +102,22 @@ func TestMain(m *testing.M) {
 	// マイグレーションの実行
 	log.Println("Running migrations on test database...")
 	// まず、既存のマイグレーションをすべてダウンさせ、スキーマをクリーンな状態に戻す
-	// ★ プロジェクトルート直下のdb/migrationsを参照（examples配下でも同じ）
-	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "../../../db/migrations", "down", "-all")
+	// ★ プロジェクトルート直下のdb/migrationsを参照（常に同じディレクトリを使用）
+	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "down", "-all")
 	if output, err := migrateDownCmd.CombinedOutput(); err != nil {
 		// エラーが発生しても続行（初回実行時など、ダウンするマイグレーションがない場合があるため）
 		log.Printf("Could not run migrate down (may be normal on first run): %v\nOutput: %s", err, string(output))
 	}
 
 	// その後、すべてのマイグレーションをアップする
-	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "../../../db/migrations", "up")
+	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "up")
 	if output, err := migrateUpCmd.CombinedOutput(); err != nil {
 		log.Fatalf("Could not run migrations: %v\nOutput: %s", err, string(output))
 	}
 
 	// シードデータのロード
 	log.Println("Loading seed data...")
-	if err := loadSeedData(testDB); err != nil {
+	if err := loadSeedData(testDB, seedDataPath); err != nil {
 		log.Fatalf("Could not load seed data: %v", err)
 	}
 
@@ -134,8 +165,9 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 
 // loadSeedDataはseed.sqlを読み込み、テストDBに適用します。
 // ★ プロジェクトルート直下のtestdata/seed.sqlを参照（examples配下でも同じ）
-func loadSeedData(db *sql.DB) error {
-	seedSQL, err := os.ReadFile("../../../testdata/seed.sql")
+func loadSeedData(db *sql.DB, seedDataPath string) error {
+	// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（常に同じファイルを使用）
+	seedSQL, err := os.ReadFile(seedDataPath)
 	if err != nil {
 		return err
 	}

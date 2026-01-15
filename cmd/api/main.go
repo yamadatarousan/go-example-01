@@ -170,11 +170,15 @@ func setupRouter(
 		v1.GET("/todos/today", handler.ErrorHandler(todoHandler.GetTodayTodos))        // 今日のTODO
 		v1.GET("/todos/week", handler.ErrorHandler(todoHandler.GetThisWeekTodos))      // 今週のTODO
 
+		// Phase 3で追加されたTODOエンドポイント
+		v1.GET("/todos/search", handler.ErrorHandler(todoHandler.SearchTodos))       // TODO検索
+		v1.GET("/todos/statistics", handler.ErrorHandler(todoHandler.GetStatistics)) // TODO統計情報
+
 		// カテゴリーエンドポイント（Phase 2で追加）
-		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))       // カテゴリー作成
-		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))         // カテゴリー一覧
-		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))       // カテゴリー取得
-		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))    // カテゴリー更新
+		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))      // カテゴリー作成
+		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))        // カテゴリー一覧
+		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))      // カテゴリー取得
+		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))   // カテゴリー更新
 		v1.DELETE("/categories/:id", handler.ErrorHandler(categoryHandler.DeleteCategory)) // カテゴリー削除
 
 		// 管理者専用エンドポイント

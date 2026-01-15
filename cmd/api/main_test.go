@@ -1,5 +1,5 @@
 // ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/internal/config" → "gin-quickstart/internal/config"
+// 例: "gin-quickstart/internal/config" → "gin-quickstart/internal/config"
 
 package main
 
@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,13 +29,43 @@ import (
 
 var testDB *sql.DB
 
+// getProjectRoot はgo.modファイルを探してプロジェクトルートを特定します。
+// これにより、examples/cmd/api でもcmd/api でも同じコードで動作します。
+func getProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Could not get working directory: %v", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	log.Fatal("Could not find project root (go.mod not found)")
+	return ""
+}
+
 // TestMainは、パッケージ内のテストが実行される前に一度だけ呼ばれる特別な関数です。
 func TestMain(m *testing.M) {
+	// プロジェクトルートを取得
+	// ★ これにより、examples/cmd/api でもcmd/api でも同じコードで動作します
+	projectRoot := getProjectRoot()
+	dockerComposePath := filepath.Join(projectRoot, "docker-compose.test.yml")
+	migrationsPath := filepath.Join(projectRoot, "db", "migrations")
+	seedDataPath := filepath.Join(projectRoot, "testdata", "seed.sql")
+
 	// --- セットアップ ---
 	log.Println("Spinning up test database...")
 	// --waitフラグでhealthcheckが通るまで待機
 	// ★ プロジェクトルート直下のdocker-compose.test.ymlを参照（常に同じファイルを使用）
-	cmd := exec.Command("docker-compose", "-f", "../../docker-compose.test.yml", "up", "-d", "--wait")
+	cmd := exec.Command("docker-compose", "-f", dockerComposePath, "up", "-d", "--wait")
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("Could not start test database: %v", err)
 	}
@@ -42,7 +73,7 @@ func TestMain(m *testing.M) {
 	// deferでテスト終了時に必ずDBコンテナとボリュームを破棄する
 	defer func() {
 		log.Println("Tearing down test database and volumes...")
-		cmd := exec.Command("docker-compose", "-f", "../../docker-compose.test.yml", "down", "-v")
+		cmd := exec.Command("docker-compose", "-f", dockerComposePath, "down", "-v")
 		if err := cmd.Run(); err != nil {
 			log.Printf("Could not stop test database: %v", err)
 		}
@@ -72,21 +103,21 @@ func TestMain(m *testing.M) {
 	log.Println("Running migrations on test database...")
 	// まず、既存のマイグレーションをすべてダウンさせ、スキーマをクリーンな状態に戻す
 	// ★ プロジェクトルート直下のdb/migrationsを参照（常に同じディレクトリを使用）
-	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "../../db/migrations", "down", "-all")
+	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "down", "-all")
 	if output, err := migrateDownCmd.CombinedOutput(); err != nil {
 		// エラーが発生しても続行（初回実行時など、ダウンするマイグレーションがない場合があるため）
 		log.Printf("Could not run migrate down (may be normal on first run): %v\nOutput: %s", err, string(output))
 	}
 
 	// その後、すべてのマイグレーションをアップする
-	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", "../../db/migrations", "up")
+	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "up")
 	if output, err := migrateUpCmd.CombinedOutput(); err != nil {
 		log.Fatalf("Could not run migrations: %v\nOutput: %s", err, string(output))
 	}
 
 	// シードデータのロード
 	log.Println("Loading seed data...")
-	if err := loadSeedData(testDB); err != nil {
+	if err := loadSeedData(testDB, seedDataPath); err != nil {
 		log.Fatalf("Could not load seed data: %v", err)
 	}
 
@@ -133,9 +164,10 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 }
 
 // loadSeedDataはseed.sqlを読み込み、テストDBに適用します。
-// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（常に同じファイルを使用）
-func loadSeedData(db *sql.DB) error {
-	seedSQL, err := os.ReadFile("../../testdata/seed.sql")
+// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（examples配下でも同じ）
+func loadSeedData(db *sql.DB, seedDataPath string) error {
+	// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（常に同じファイルを使用）
+	seedSQL, err := os.ReadFile(seedDataPath)
 	if err != nil {
 		return err
 	}
@@ -657,4 +689,165 @@ func createCategory(t *testing.T, router *gin.Engine, token, name, color string)
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
 	return int(response["id"].(float64))
+}
+
+// ============================================================================
+// Phase 3のテスト
+// ============================================================================
+
+// TestSearchTodos は検索エンドポイントのテスト
+func TestSearchTodos(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	// テスト用のTODOを複数作成
+	todos := []string{
+		`{"name": "High priority task", "priority": "high", "status": "todo"}`,
+		`{"name": "Medium priority task", "priority": "medium", "status": "in_progress"}`,
+		`{"name": "Low priority task", "priority": "low", "status": "done"}`,
+		`{"name": "Search test task", "description": "This is a searchable description", "priority": "high", "status": "todo"}`,
+	}
+
+	for _, todoBody := range todos {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+	}
+
+	// テスト1: 優先度フィルター
+	t.Run("Filter by priority", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?priority=high", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+		todos := result["todos"].([]interface{})
+		assert.GreaterOrEqual(t, len(todos), 2) // 最低2件のhigh priorityタスク
+	})
+
+	// テスト2: ステータスフィルター
+	t.Run("Filter by status", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?status=done", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		todos := result["todos"].([]interface{})
+		assert.GreaterOrEqual(t, len(todos), 1) // 最低1件のdoneタスク
+	})
+
+	// テスト3: 全文検索
+	t.Run("Full-text search", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?search=searchable", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+	})
+
+	// テスト4: ページネーション
+	t.Run("Pagination", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?page=1&limit=2", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.Equal(t, float64(1), result["page"])
+		assert.Equal(t, float64(2), result["limit"])
+		todos := result["todos"].([]interface{})
+		assert.LessOrEqual(t, len(todos), 2) // 最大2件
+	})
+
+	// テスト5: ソート順
+	t.Run("Sort order", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/todos/search?sort=priority&order=desc", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NotNil(t, result["todos"])
+	})
+}
+
+// TestGetStatistics は統計情報エンドポイントのテスト
+func TestGetStatistics(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	// テスト用のTODOを作成（様々なステータス・優先度）
+	todos := []string{
+		`{"name": "Todo 1", "priority": "high", "status": "todo"}`,
+		`{"name": "Todo 2", "priority": "medium", "status": "in_progress"}`,
+		`{"name": "Todo 3", "priority": "low", "status": "done"}`,
+		`{"name": "Todo 4", "priority": "high", "status": "todo"}`,
+		`{"name": "Todo 5", "priority": "medium", "status": "done"}`,
+	}
+
+	for _, todoBody := range todos {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+	}
+
+	// 統計情報を取得
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/todos/statistics", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var stats map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &stats)
+
+	// 総件数の確認
+	assert.NotNil(t, stats["total_count"])
+	totalCount := int(stats["total_count"].(float64))
+	assert.GreaterOrEqual(t, totalCount, 5)
+
+	// ステータス別カウントの確認
+	statusCounts := stats["status_counts"].(map[string]interface{})
+	assert.NotNil(t, statusCounts["todo"])
+	assert.NotNil(t, statusCounts["in_progress"])
+	assert.NotNil(t, statusCounts["done"])
+	assert.GreaterOrEqual(t, int(statusCounts["todo"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(statusCounts["in_progress"].(float64)), 1)
+	assert.GreaterOrEqual(t, int(statusCounts["done"].(float64)), 2)
+
+	// 優先度別カウントの確認
+	priorityCounts := stats["priority_counts"].(map[string]interface{})
+	assert.NotNil(t, priorityCounts["high"])
+	assert.NotNil(t, priorityCounts["medium"])
+	assert.NotNil(t, priorityCounts["low"])
+	assert.GreaterOrEqual(t, int(priorityCounts["high"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(priorityCounts["medium"].(float64)), 2)
+	assert.GreaterOrEqual(t, int(priorityCounts["low"].(float64)), 1)
+
+	// 期限関連カウントの確認
+	assert.NotNil(t, stats["overdue_count"])
+	assert.NotNil(t, stats["due_today_count"])
+	assert.NotNil(t, stats["due_this_week_count"])
 }
