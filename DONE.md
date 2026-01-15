@@ -1138,5 +1138,177 @@ Phase 4が完了しました。以下の機能が実装され、完全に動作�
 - タグ機能の完全実装（Phase 2で準備済み）
 - サブタスク機能のUI対応
 - ファイル添付機能
-- コメント機能
-- プロジェクト/コラボレーション機能（Phase 5）
+
+---
+
+## Phase 5: 共有・コラボレーション機能 **（2026-01-16完了）**
+
+### 実装内容
+
+#### 1. プロジェクト機能
+- プロジェクトのCRUD操作
+- オーナー権限管理
+- プロジェクトメンバー自動登録
+
+**エンドポイント:**
+```
+POST   /api/v1/projects                      # プロジェクト作成
+GET    /api/v1/projects                      # プロジェクト一覧
+GET    /api/v1/projects/:id                  # プロジェクト取得
+PUT    /api/v1/projects/:id                  # プロジェクト更新
+DELETE /api/v1/projects/:id                  # プロジェクト削除
+```
+
+#### 2. メンバー管理
+- メンバーの追加・削除
+- 役割管理（owner/admin/member）
+- メンバー一覧取得
+- 役割更新機能
+
+**エンドポイント:**
+```
+POST   /api/v1/projects/:id/members          # メンバー追加
+GET    /api/v1/projects/:id/members          # メンバー一覧
+DELETE /api/v1/projects/:id/members/:userId  # メンバー削除
+PUT    /api/v1/projects/:id/members/:userId/role  # 役割更新
+```
+
+#### 3. TODO担当者機能
+- TODOへの担当者割り当て
+- プロジェクトメンバーのみ割り当て可能
+- 担当者一覧取得
+- 担当解除
+
+**エンドポイント:**
+```
+POST   /api/v1/todos/:id/assignments         # 担当者割り当て
+GET    /api/v1/todos/:id/assignments         # 担当者一覧
+DELETE /api/v1/todos/:id/assignments/:userId # 担当者解除
+```
+
+#### 4. コメント機能
+- TODOへのコメント追加
+- コメントの編集・削除
+- コメント一覧取得
+- プロジェクトメンバーもアクセス可能
+
+**エンドポイント:**
+```
+POST   /api/v1/todos/:id/comments            # コメント作成
+GET    /api/v1/todos/:id/comments            # コメント一覧
+GET    /api/v1/comments/:commentId           # コメント取得
+PUT    /api/v1/comments/:commentId           # コメント更新
+DELETE /api/v1/comments/:commentId           # コメント削除
+```
+
+### データベース設計
+
+#### テーブル構成
+```sql
+-- projects: プロジェクト情報
+-- project_members: プロジェクトメンバー（複合主キー）
+-- todo_assignments: TODO担当者（複合主キー）
+-- comments: TODOコメント
+```
+
+### アクセス制御
+
+#### プロジェクト
+- オーナーのみ: 更新、削除、メンバー追加、役割変更
+- 管理者: メンバー追加
+- メンバー: 閲覧のみ
+
+#### TODO
+- オーナー: 全権限
+- プロジェクトメンバー: 閲覧、コメント追加、担当者割り当て
+
+#### コメント
+- 作成者のみ: 編集、削除
+- プロジェクトメンバー: 閲覧
+
+### テスト結果
+
+```bash
+=== RUN   TestCreateProject
+--- PASS: TestCreateProject (0.08s)
+=== RUN   TestGetProjects
+--- PASS: TestGetProjects (0.09s)
+=== RUN   TestGetProject
+--- PASS: TestGetProject (0.08s)
+=== RUN   TestUpdateProject
+--- PASS: TestUpdateProject (0.08s)
+=== RUN   TestDeleteProject
+--- PASS: TestDeleteProject (0.08s)
+=== RUN   TestAddMember
+--- PASS: TestAddMember (0.09s)
+=== RUN   TestGetMembers
+--- PASS: TestGetMembers (0.08s)
+=== RUN   TestRemoveMember
+--- PASS: TestRemoveMember (0.09s)
+=== RUN   TestUpdateMemberRole
+--- PASS: TestUpdateMemberRole (0.09s)
+=== RUN   TestAssignUser
+--- PASS: TestAssignUser (0.08s)
+=== RUN   TestGetAssignments
+--- PASS: TestGetAssignments (0.08s)
+=== RUN   TestUnassignUser
+--- PASS: TestUnassignUser (0.08s)
+=== RUN   TestCreateComment
+--- PASS: TestCreateComment (0.08s)
+=== RUN   TestGetCommentsByTodoID
+--- PASS: TestGetCommentsByTodoID (0.09s)
+=== RUN   TestGetComment
+--- PASS: TestGetComment (0.09s)
+=== RUN   TestUpdateComment
+--- PASS: TestUpdateComment (0.10s)
+=== RUN   TestDeleteComment
+--- PASS: TestDeleteComment (0.10s)
+PASS
+```
+
+**全51テスト、全てPASS**（Phase 1-5の累計）
+
+### ファイル構成
+
+**マイグレーション:**
+- `000015_create_projects_table.up/down.sql`
+- `000016_create_project_members_table.up/down.sql`
+- `000017_create_todo_assignments_table.up/down.sql`
+- `000018_create_comments_table.up/down.sql`
+
+**Domain層:**
+- `internal/domain/project.go`
+- `internal/domain/project_member.go`
+- `internal/domain/todo_assignment.go`
+- `internal/domain/comment.go`
+
+**Repository層:**
+- `internal/repository/project_repository.go`
+- `internal/repository/comment_repository.go`
+- `internal/repository/todo_assignment_repository.go`
+
+**Service層:**
+- `internal/service/project_service.go`
+- `internal/service/comment_service.go`
+- `internal/service/todo_assignment_service.go`
+
+**Handler層:**
+- `internal/handler/project_handler.go`
+- `internal/handler/comment_handler.go`
+- `internal/handler/todo_assignment_handler.go`
+
+### 次のステップ
+
+Phase 5が完了しました。以下の機能が実装され、完全に動作しています：
+
+1. ✅ **Phase 1**: レイヤードアーキテクチャへのリファクタリング
+2. ✅ **Phase 2**: TODO機能の拡張（優先度、期限、ステータス、カテゴリー）
+3. ✅ **Phase 3**: 検索・フィルタリング・統計情報
+4. ✅ **Phase 4**: 通知・リマインダー機能
+5. ✅ **Phase 5**: 共有・コラボレーション機能
+
+今後の拡張可能性：
+- セキュリティ・パフォーマンス強化（Phase 6）
+- リアルタイム機能（WebSocket）
+- ファイル添付機能
+- タグ機能の完全実装

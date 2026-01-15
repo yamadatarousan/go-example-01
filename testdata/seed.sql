@@ -9,8 +9,13 @@ VALUES (1, 'admin-test@example.com', '$2a$10$kxtxAB6YnV5vub0dbnc9z.DmL92hzshSp/X
 ON CONFLICT (id) DO NOTHING;
 
 -- Normal User (ID: 2)
-INSERT INTO users (id, email, password_hash, role) 
+INSERT INTO users (id, email, password_hash, role)
 VALUES (2, 'user-test@example.com', '$2a$10$kxtxAB6YnV5vub0dbnc9z.DmL92hzshSp/X32LFR8G8//BxSx2Us6', 'user')
+ON CONFLICT (id) DO NOTHING;
+
+-- Normal User (ID: 3)
+INSERT INTO users (id, email, password_hash, role)
+VALUES (3, 'user3-test@example.com', '$2a$10$kxtxAB6YnV5vub0dbnc9z.DmL92hzshSp/X32LFR8G8//BxSx2Us6', 'user')
 ON CONFLICT (id) DO NOTHING;
 
 -- Normal User's Todo
