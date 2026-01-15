@@ -47,9 +47,9 @@ func main() {
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
-	categoryService := service.NewCategoryService(categoryRepo)              // Phase 2で追加
-	notificationService := service.NewNotificationService(notificationRepo)  // Phase 4で追加
-	_ = service.NewReminderService(reminderRepo, notificationRepo, todoRepo) // Phase 4で追加（将来のバックグラウンドワーカー用）
+	categoryService := service.NewCategoryService(categoryRepo)                             // Phase 2で追加
+	notificationService := service.NewNotificationService(notificationRepo)                 // Phase 4で追加
+	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo) // Phase 4で追加
 
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
@@ -57,9 +57,17 @@ func main() {
 	adminHandler := handler.NewAdminHandler(adminService)
 	categoryHandler := handler.NewCategoryHandler(categoryService)             // Phase 2で追加
 	notificationHandler := handler.NewNotificationHandler(notificationService) // Phase 4で追加
+	reminderHandler := handler.NewReminderHandler(reminderService)             // Phase 4で追加
 
 	// ルーターの設定
-	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler)
+	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler, reminderHandler)
+
+	// バックグラウンドワーカーのコンテキスト
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+
+	// リマインダーワーカーを起動
+	go startReminderWorker(workerCtx, reminderService)
 
 	// Graceful Shutdownの実装
 	srv := &http.Server{
@@ -81,6 +89,9 @@ func main() {
 	<-quit
 
 	log.Println("サーバーをシャットダウン中...")
+
+	// バックグラウンドワーカーを停止
+	workerCancel()
 
 	// 5秒以内に既存のリクエストの処理を終了
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -118,6 +129,7 @@ func setupRouter(
 	adminHandler *handler.AdminHandler,
 	categoryHandler *handler.CategoryHandler, // Phase 2で追加
 	notificationHandler *handler.NotificationHandler, // Phase 4で追加
+	reminderHandler *handler.ReminderHandler, // Phase 4で追加
 ) *gin.Engine {
 	router := gin.New()
 
@@ -190,9 +202,15 @@ func setupRouter(
 		// 通知エンドポイント（Phase 4で追加）
 		v1.GET("/notifications", handler.ErrorHandler(notificationHandler.GetNotifications))                    // 通知一覧
 		v1.GET("/notifications/unread", handler.ErrorHandler(notificationHandler.GetUnreadNotifications))       // 未読通知
+		v1.GET("/notifications/stream", notificationHandler.StreamNotifications)                                // SSEストリーム
 		v1.PUT("/notifications/:id/read", handler.ErrorHandler(notificationHandler.MarkNotificationAsRead))     // 既読にする
 		v1.PUT("/notifications/read-all", handler.ErrorHandler(notificationHandler.MarkAllNotificationsAsRead)) // 全て既読
 		v1.DELETE("/notifications/:id", handler.ErrorHandler(notificationHandler.DeleteNotification))           // 通知削除
+
+		// リマインダーエンドポイント（Phase 4で追加）
+		v1.POST("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.CreateReminder))      // リマインダー作成
+		v1.GET("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.GetRemindersByTodoID)) // リマインダー一覧
+		v1.DELETE("/reminders/:id", handler.ErrorHandler(reminderHandler.DeleteReminder))          // リマインダー削除
 
 		// 管理者専用エンドポイント
 		adminRoutes := v1.Group("/admin")
@@ -203,4 +221,26 @@ func setupRouter(
 	}
 
 	return router
+}
+
+// startReminderWorker はリマインダーをチェックして通知を作成するバックグラウンドワーカー
+func startReminderWorker(ctx context.Context, reminderService *service.ReminderService) {
+	ticker := time.NewTicker(1 * time.Minute) // 1分ごとに実行
+	defer ticker.Stop()
+
+	log.Println("リマインダーワーカーを起動しました")
+
+	for {
+		select {
+		case <-ticker.C:
+			// 送信待ちリマインダーを処理
+			if err := reminderService.ProcessPendingReminders(ctx); err != nil {
+				log.Printf("リマインダー処理エラー: %v", err)
+			}
+		case <-ctx.Done():
+			// Graceful Shutdown時に停止
+			log.Println("リマインダーワーカーを停止しました")
+			return
+		}
+	}
 }
