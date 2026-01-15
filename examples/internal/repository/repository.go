@@ -272,3 +272,46 @@ type ReminderRepository interface {
 	MarkAsSent(ctx context.Context, reminderID int) error                                   // 送信済みにする
 	Delete(ctx context.Context, reminderID int) error                                       // リマインダー削除
 }
+
+// ProjectRepository はプロジェクトデータアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
+type ProjectRepository interface {
+	Create(ctx context.Context, input domain.CreateProjectInput, ownerID int) (domain.Project, error)
+	FindAll(ctx context.Context, userID int) ([]domain.Project, error)
+	FindByID(ctx context.Context, projectID, userID int) (domain.Project, error)
+	Update(ctx context.Context, projectID int, input domain.UpdateProjectInput, userID int) (domain.Project, error)
+	Delete(ctx context.Context, projectID, userID int) error
+	AddMember(ctx context.Context, projectID int, input domain.AddMemberInput, ownerID int) error
+	RemoveMember(ctx context.Context, projectID, userID, requesterID int) error
+	GetMembers(ctx context.Context, projectID, userID int) ([]domain.ProjectMember, error)
+	UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string, requesterID int) error
+	IsOwner(ctx context.Context, projectID, userID int) (bool, error)
+	IsMember(ctx context.Context, projectID, userID int) (bool, error)
+}
+
+// CommentRepository はコメントデータアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
+type CommentRepository interface {
+	Create(ctx context.Context, todoID int, input domain.CreateCommentInput, userID int) (domain.Comment, error)
+	FindByTodoID(ctx context.Context, todoID, userID int) ([]domain.Comment, error)
+	FindByID(ctx context.Context, commentID, userID int) (domain.Comment, error)
+	Update(ctx context.Context, commentID int, input domain.UpdateCommentInput, userID int) (domain.Comment, error)
+	Delete(ctx context.Context, commentID, userID int) error
+}
+
+// TodoAssignmentRepository はTODO担当者データアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
+type TodoAssignmentRepository interface {
+	AssignUser(ctx context.Context, todoID int, input domain.AssignUserInput, requesterID int) (domain.TodoAssignment, error)
+	UnassignUser(ctx context.Context, todoID, userID, requesterID int) error
+	GetAssignments(ctx context.Context, todoID, requesterID int) ([]domain.TodoAssignment, error)
+}
