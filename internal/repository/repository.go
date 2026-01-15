@@ -243,5 +243,32 @@ type TagRepository interface {
 	FindAll(ctx context.Context) ([]domain.Tag, error)                       // 全タグ一覧
 	AttachToTodo(ctx context.Context, todoID int, tagIDs []int) error        // TODOにタグを紐付け
 	DetachFromTodo(ctx context.Context, todoID int) error                    // TODOからタグを解除
-	FindByTodoID(ctx context.Context, todoID int) ([]domain.Tag, error)     // TODO IDに紐づくタグを取得
+	FindByTodoID(ctx context.Context, todoID int) ([]domain.Tag, error)      // TODO IDに紐づくタグを取得
+}
+
+// NotificationRepository は通知データアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
+type NotificationRepository interface {
+	Create(ctx context.Context, input domain.CreateNotificationInput) (domain.Notification, error) // 通知作成
+	FindAll(ctx context.Context, userID int) ([]domain.Notification, error)                        // ユーザーの全通知取得
+	FindUnread(ctx context.Context, userID int) ([]domain.Notification, error)                     // 未読通知取得
+	MarkAsRead(ctx context.Context, notificationID, userID int) error                              // 既読にする
+	MarkAllAsRead(ctx context.Context, userID int) error                                           // 全て既読にする
+	Delete(ctx context.Context, notificationID, userID int) error                                  // 通知削除
+}
+
+// ReminderRepository はリマインダーデータアクセスの層境界インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+//
+// 全てのメソッドでcontext.Contextを受け取ることで、タイムアウト・キャンセル制御が可能になります。
+type ReminderRepository interface {
+	Create(ctx context.Context, input domain.CreateReminderInput) (domain.Reminder, error) // リマインダー作成
+	FindByTodoID(ctx context.Context, todoID int) ([]domain.Reminder, error)               // TODOのリマインダー取得
+	FindPending(ctx context.Context) ([]domain.Reminder, error)                            // 送信待ちリマインダー取得
+	MarkAsSent(ctx context.Context, reminderID int) error                                  // 送信済みにする
+	Delete(ctx context.Context, reminderID int) error                                      // リマインダー削除
 }
