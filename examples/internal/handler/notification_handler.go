@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"gin-quickstart/examples/internal/service"
 
@@ -101,4 +103,48 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) error {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Notification deleted successfully"})
 	return nil
+}
+
+// StreamNotifications はSSEで未読通知をストリーミング配信
+func (h *NotificationHandler) StreamNotifications(c *gin.Context) {
+	// SSEヘッダーの設定
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	claims := c.MustGet("claims").(*service.AppClaims)
+	userID, _ := strconv.Atoi(claims.Subject)
+
+	ticker := time.NewTicker(5 * time.Second) // 5秒ごとにチェック
+	defer ticker.Stop()
+
+	// 初回送信
+	notifications, err := h.notificationService.GetUnreadNotifications(c.Request.Context(), userID)
+	if err == nil && len(notifications) > 0 {
+		data, _ := json.Marshal(notifications)
+		c.SSEvent("notification", string(data))
+		c.Writer.Flush()
+	}
+
+	// 定期的に送信
+	for {
+		select {
+		case <-ticker.C:
+			notifications, err := h.notificationService.GetUnreadNotifications(c.Request.Context(), userID)
+			if err != nil {
+				continue
+			}
+
+			if len(notifications) > 0 {
+				data, _ := json.Marshal(notifications)
+				c.SSEvent("notification", string(data))
+				c.Writer.Flush()
+			}
+
+		case <-c.Request.Context().Done():
+			// クライアントが切断したら終了
+			return
+		}
+	}
 }

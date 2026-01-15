@@ -43,14 +43,29 @@ func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo
 }
 
 // FindByID は指定されたIDのTODOを取得（Phase 2拡張フィールド含む）
+// userID=0の場合はシステム権限としてuser_idチェックをスキップ（バックグラウンドワーカー用）
 func (r *todoRepository) FindByID(ctx context.Context, todoID, userID int) (domain.Todo, error) {
 	var todo domain.Todo
-	err := r.db.QueryRowContext(
-		ctx,
-		`SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
-		FROM todos WHERE id = $1 AND user_id = $2`,
-		todoID, userID,
-	).Scan(&todo.ID, &todo.Name, &todo.Description, &todo.Status, &todo.Priority, &todo.DueDate, &todo.UserID, &todo.CategoryID, &todo.ParentTodoID, &todo.CreatedAt, &todo.UpdatedAt)
+	var query string
+	var args []interface{}
+
+	if userID == 0 {
+		// システム権限: user_idチェックなし
+		query = `SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos WHERE id = $1`
+		args = []interface{}{todoID}
+	} else {
+		// 通常のユーザー権限: user_idチェックあり
+		query = `SELECT id, name, description, status, priority, due_date, user_id, category_id, parent_todo_id, created_at, updated_at
+		FROM todos WHERE id = $1 AND user_id = $2`
+		args = []interface{}{todoID, userID}
+	}
+
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(
+		&todo.ID, &todo.Name, &todo.Description, &todo.Status, &todo.Priority,
+		&todo.DueDate, &todo.UserID, &todo.CategoryID, &todo.ParentTodoID,
+		&todo.CreatedAt, &todo.UpdatedAt,
+	)
 	if err != nil {
 		return todo, err
 	}

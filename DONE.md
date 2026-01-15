@@ -801,14 +801,33 @@ Phase 3が完了しました。以下の機能が実装され、完全に動作�
   - `ProcessPendingReminders`: バックグラウンドワーカー用のリマインダー処理メソッド
 
 **4.5 Handler層の実装**
-- ✅ NotificationHandler の実装（5つのエンドポイント）
+- ✅ NotificationHandler の実装（6つのエンドポイント）
   - `GET /api/v1/notifications`: 通知一覧取得
   - `GET /api/v1/notifications/unread`: 未読通知取得
+  - `GET /api/v1/notifications/stream`: SSEリアルタイム通知配信
   - `PUT /api/v1/notifications/:id/read`: 通知を既読にする
   - `PUT /api/v1/notifications/read-all`: 全通知を既読にする
   - `DELETE /api/v1/notifications/:id`: 通知削除
+- ✅ ReminderHandler の実装（3つのエンドポイント）
+  - `POST /api/v1/todos/:id/reminders`: リマインダー作成
+  - `GET /api/v1/todos/:id/reminders`: リマインダー一覧取得
+  - `DELETE /api/v1/reminders/:id`: リマインダー削除
 
-**4.6 統合テストの追加**
+**4.6 バックグラウンドワーカーの実装**
+- ✅ `startReminderWorker`: 1分ごとにリマインダーをチェックして通知を作成
+- ✅ Graceful Shutdown対応
+- ✅ `ProcessPendingReminders`の定期実行
+
+**4.7 SSE (Server-Sent Events) の実装**
+- ✅ `StreamNotifications`: 5秒ごとに未読通知をプッシュ
+- ✅ リアルタイム通知配信機能
+- ✅ クライアント切断時の適切なクリーンアップ
+
+**4.8 システム権限の実装**
+- ✅ `FindByID`にシステム権限ロジック追加（userID=0で全TODOアクセス可能）
+- ✅ バックグラウンドワーカーがユーザー所有権を超えてTODOにアクセス可能
+
+**4.9 統合テストの追加**
 - ✅ TestGetNotifications: 通知一覧取得のテスト
 - ✅ TestGetUnreadNotifications: 未読通知取得のテスト
 - ✅ TestMarkNotificationAsRead: 通知既読化のテスト
@@ -816,9 +835,12 @@ Phase 3が完了しました。以下の機能が実装され、完全に動作�
 - ✅ TestDeleteNotification: 通知削除のテスト
 - ✅ TestMarkNotificationAsReadUnauthorized: 他ユーザーの通知へのアクセス拒否テスト
 - ✅ TestDeleteNotificationUnauthorized: 他ユーザーの通知削除拒否テスト
-- ✅ createNotification: 通知作成ヘルパー関数
+- ✅ TestCreateReminder: リマインダー作成のテスト
+- ✅ TestGetRemindersByTodoID: リマインダー一覧取得のテスト
+- ✅ TestDeleteReminder: リマインダー削除のテスト
+- ✅ TestProcessPendingReminders: バックグラウンドワーカーの動作テスト
 
-**合計: 31テスト、全てPASS**
+**合計: 35テスト、全てPASS**
 
 ### 追加されたファイル
 
@@ -841,17 +863,21 @@ Phase 3が完了しました。以下の機能が実装され、完全に動作�
 - `internal/service/notification_service.go`: 通知ビジネスロジック
 - `internal/service/reminder_service.go`: リマインダービジネスロジック（ProcessPendingReminders含む）
 
-#### Handler層（+1ファイル）
-- `internal/handler/notification_handler.go`: 通知HTTPハンドラー
+#### Handler層（+2ファイル）
+- `internal/handler/notification_handler.go`: 通知HTTPハンドラー（SSE含む）
+- `internal/handler/reminder_handler.go`: リマインダーHTTPハンドラー
 
 #### エントリーポイント
-- `cmd/api/main.go`: 新しい依存性注入とルーティング追加
+- `cmd/api/main.go`: 新しい依存性注入、ルーティング、バックグラウンドワーカー追加
+
+#### Repository層の修正
+- `internal/repository/todo_repository.go`: FindByIDにシステム権限ロジック追加
 
 #### テスト
-- `cmd/api/main_test.go`: 8つの通知テストを追加
+- `cmd/api/main_test.go`: 11個のテストを追加（通知7個、リマインダー3個、バックグラウンドワーカー1個）
 
-**Phase 4で追加されたファイル数: 11ファイル**
-**Phase 4で修正されたファイル数: 3ファイル**
+**Phase 4で追加されたファイル数: 12ファイル**
+**Phase 4で修正されたファイル数: 4ファイル**
 
 ### 主な改善点
 
@@ -949,6 +975,57 @@ CREATE INDEX idx_reminders_todo ON reminders(todo_id);
    CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
    ```
 
+5. **SSE (Server-Sent Events) によるリアルタイム通知**
+   ```go
+   func (h *NotificationHandler) StreamNotifications(c *gin.Context) {
+       c.Header("Content-Type", "text/event-stream")
+       c.Header("Cache-Control", "no-cache")
+       c.Header("Connection", "keep-alive")
+
+       ticker := time.NewTicker(5 * time.Second)
+       for {
+           select {
+           case <-ticker.C:
+               notifications, _ := h.service.GetUnreadNotifications(...)
+               if len(notifications) > 0 {
+                   c.SSEvent("notification", notifications)
+                   c.Writer.Flush()
+               }
+           case <-c.Request.Context().Done():
+               return
+           }
+       }
+   }
+   ```
+
+6. **バックグラウンドワーカーの実装**
+   ```go
+   func startReminderWorker(ctx context.Context, reminderService *service.ReminderService) {
+       ticker := time.NewTicker(1 * time.Minute)
+       for {
+           select {
+           case <-ticker.C:
+               reminderService.ProcessPendingReminders(ctx)
+           case <-ctx.Done():
+               return // Graceful Shutdown
+           }
+       }
+   }
+   ```
+
+7. **システム権限の実装**
+   ```go
+   func (r *todoRepository) FindByID(ctx context.Context, todoID, userID int) (domain.Todo, error) {
+       if userID == 0 {
+           // システム権限: user_idチェックなし（バックグラウンドワーカー用）
+           query = `SELECT ... FROM todos WHERE id = $1`
+       } else {
+           // 通常のユーザー権限: user_idチェックあり
+           query = `SELECT ... FROM todos WHERE id = $1 AND user_id = $2`
+       }
+   }
+   ```
+
 ### API使用例
 
 **通知API**:
@@ -972,6 +1049,48 @@ Authorization: Bearer <token>
 # 通知を削除
 DELETE /api/v1/notifications/123
 Authorization: Bearer <token>
+
+# SSEでリアルタイム通知を受信
+GET /api/v1/notifications/stream
+Authorization: Bearer <token>
+```
+
+**リマインダーAPI**:
+```bash
+# リマインダーを作成
+POST /api/v1/todos/123/reminders
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "remind_at": "2026-12-31T10:00:00Z"
+}
+
+# TODOのリマインダー一覧を取得
+GET /api/v1/todos/123/reminders
+Authorization: Bearer <token>
+
+# リマインダーを削除
+DELETE /api/v1/reminders/456
+Authorization: Bearer <token>
+```
+
+**SSE使用例（フロントエンド）**:
+```javascript
+const eventSource = new EventSource('/api/v1/notifications/stream', {
+    headers: { 'Authorization': 'Bearer ' + token }
+});
+
+eventSource.addEventListener('notification', (event) => {
+    const notifications = JSON.parse(event.data);
+    console.log('新しい通知:', notifications);
+    showNotificationBadge(notifications.length);
+});
+
+eventSource.onerror = (error) => {
+    console.error('SSE接続エラー:', error);
+    eventSource.close();
+};
 ```
 
 ### テスト結果
@@ -991,11 +1110,19 @@ Authorization: Bearer <token>
 --- PASS: TestMarkNotificationAsReadUnauthorized (0.08s)
 === RUN   TestDeleteNotificationUnauthorized
 --- PASS: TestDeleteNotificationUnauthorized (0.08s)
+=== RUN   TestCreateReminder
+--- PASS: TestCreateReminder (0.15s)
+=== RUN   TestGetRemindersByTodoID
+--- PASS: TestGetRemindersByTodoID (0.14s)
+=== RUN   TestDeleteReminder
+--- PASS: TestDeleteReminder (0.16s)
+=== RUN   TestProcessPendingReminders
+--- PASS: TestProcessPendingReminders (0.12s)
 PASS
-ok  	gin-quickstart/examples/cmd/api	6.789s
+ok  	gin-quickstart/examples/cmd/api	7.747s
 ```
 
-**全31テスト、全てPASS**
+**全35テスト、全てPASS**
 
 ### 次のステップ
 
@@ -1007,10 +1134,9 @@ Phase 4が完了しました。以下の機能が実装され、完全に動作�
 4. ✅ **Phase 4**: 通知・リマインダー機能
 
 今後の拡張可能性：
-- バックグラウンドワーカーの実装（ReminderService.ProcessPendingRemindersを定期実行）
-- WebSocketによるリアルタイム通知
-- メール通知の送信
+- メール/Push通知の送信（Firebase Cloud Messaging等）
 - タグ機能の完全実装（Phase 2で準備済み）
 - サブタスク機能のUI対応
 - ファイル添付機能
 - コメント機能
+- プロジェクト/コラボレーション機能（Phase 5）
