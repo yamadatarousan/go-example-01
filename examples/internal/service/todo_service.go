@@ -50,11 +50,35 @@ func (s *TodoService) DeleteTodo(ctx context.Context, todoID, userID int) error 
 
 // CompleteTodo はTODOを完了状態にする
 func (s *TodoService) CompleteTodo(ctx context.Context, todoID, userID int) error {
+	// TODOを取得
+	todo, err := s.todoRepo.FindByID(ctx, todoID, userID)
+	if err != nil {
+		return err
+	}
+
+	// ドメインロジックで完了処理
+	if err := todo.Complete(); err != nil {
+		return err
+	}
+
+	// Repositoryに永続化
 	return s.todoRepo.UpdateStatus(ctx, todoID, userID, "done")
 }
 
-// ReopenTodo はTODOを再開する（todoステータスに戻す）
+// ReopenTodo はTODOを再開する（未完了ステータスに戻す）
 func (s *TodoService) ReopenTodo(ctx context.Context, todoID, userID int) error {
+	// TODOを取得
+	todo, err := s.todoRepo.FindByID(ctx, todoID, userID)
+	if err != nil {
+		return err
+	}
+
+	// ドメインロジックで再開処理
+	if err := todo.Reopen(); err != nil {
+		return err
+	}
+
+	// Repositoryに永続化
 	return s.todoRepo.UpdateStatus(ctx, todoID, userID, "todo")
 }
 

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"time"
 )
 
@@ -8,14 +9,14 @@ import (
 type Todo struct {
 	ID           int        `json:"id"`
 	Name         string     `json:"name" binding:"required"`
-	Description  *string    `json:"description"`                              // 詳細説明（NULL可）
+	Description  *string    `json:"description"`                                            // 詳細説明（NULL可）
 	Status       string     `json:"status" binding:"omitempty,oneof=todo in_progress done"` // ステータス
 	Priority     string     `json:"priority" binding:"omitempty,oneof=low medium high"`     // 優先度
-	DueDate      *time.Time `json:"due_date"`                                 // 期限（NULL可）
+	DueDate      *time.Time `json:"due_date"`                                               // 期限（NULL可）
 	UserID       int        `json:"user_id"`
-	CategoryID   *int       `json:"category_id"`                              // カテゴリーID（NULL可）
-	ParentTodoID *int       `json:"parent_todo_id"`                           // 親TODO（サブタスク用、NULL可）
-	ProjectID    *int       `json:"project_id"`                               // プロジェクトID（NULL可、Phase 5で追加）
+	CategoryID   *int       `json:"category_id"`    // カテゴリーID（NULL可）
+	ParentTodoID *int       `json:"parent_todo_id"` // 親TODO（サブタスク用、NULL可）
+	ProjectID    *int       `json:"project_id"`     // プロジェクトID（NULL可、Phase 5で追加）
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 
@@ -33,8 +34,8 @@ type CreateTodoInput struct {
 	DueDate      *time.Time `json:"due_date"`
 	CategoryID   *int       `json:"category_id"`
 	ParentTodoID *int       `json:"parent_todo_id"`
-	ProjectID    *int       `json:"project_id"`  // プロジェクトID（Phase 5で追加）
-	TagIDs       []int      `json:"tag_ids"`     // タグIDの配列
+	ProjectID    *int       `json:"project_id"` // プロジェクトID（Phase 5で追加）
+	TagIDs       []int      `json:"tag_ids"`    // タグIDの配列
 }
 
 // UpdateTodoInput はTODO更新時の入力
@@ -46,8 +47,8 @@ type UpdateTodoInput struct {
 	DueDate      *time.Time `json:"due_date"`
 	CategoryID   *int       `json:"category_id"`
 	ParentTodoID *int       `json:"parent_todo_id"`
-	ProjectID    *int       `json:"project_id"`  // プロジェクトID（Phase 5で追加）
-	TagIDs       *[]int     `json:"tag_ids"`     // タグIDの配列（NULL可）
+	ProjectID    *int       `json:"project_id"` // プロジェクトID（Phase 5で追加）
+	TagIDs       *[]int     `json:"tag_ids"`    // タグIDの配列（NULL可）
 }
 
 // ============================================================================
@@ -59,14 +60,14 @@ type SearchFilters struct {
 	Status     *string    `form:"status" binding:"omitempty,oneof=todo in_progress done"`
 	Priority   *string    `form:"priority" binding:"omitempty,oneof=low medium high"`
 	CategoryID *int       `form:"category_id"`
-	TagIDs     []int      `form:"tag_ids"`      // タグID配列
-	Search     string     `form:"search"`       // 全文検索キーワード
-	DueFrom    *time.Time `form:"due_from"`     // 期限開始日
-	DueTo      *time.Time `form:"due_to"`       // 期限終了日
-	Sort       string     `form:"sort"`         // ソート項目（due_date, priority, created_at）
-	Order      string     `form:"order"`        // ソート順（asc, desc）
-	Page       int        `form:"page"`         // ページ番号
-	Limit      int        `form:"limit"`        // 1ページあたりの件数
+	TagIDs     []int      `form:"tag_ids"`  // タグID配列
+	Search     string     `form:"search"`   // 全文検索キーワード
+	DueFrom    *time.Time `form:"due_from"` // 期限開始日
+	DueTo      *time.Time `form:"due_to"`   // 期限終了日
+	Sort       string     `form:"sort"`     // ソート項目（due_date, priority, created_at）
+	Order      string     `form:"order"`    // ソート順（asc, desc）
+	Page       int        `form:"page"`     // ページ番号
+	Limit      int        `form:"limit"`    // 1ページあたりの件数
 }
 
 // SearchResult は検索結果を表す
@@ -80,10 +81,51 @@ type SearchResult struct {
 
 // Statistics はTODO統計情報を表す
 type Statistics struct {
-	TotalCount       int            `json:"total_count"`        // 総TODO数
-	StatusCounts     map[string]int `json:"status_counts"`      // ステータス別カウント
-	PriorityCounts   map[string]int `json:"priority_counts"`    // 優先度別カウント
-	OverdueCount     int            `json:"overdue_count"`      // 期限切れ数
-	DueTodayCount    int            `json:"due_today_count"`    // 今日期限数
+	TotalCount       int            `json:"total_count"`         // 総TODO数
+	StatusCounts     map[string]int `json:"status_counts"`       // ステータス別カウント
+	PriorityCounts   map[string]int `json:"priority_counts"`     // 優先度別カウント
+	OverdueCount     int            `json:"overdue_count"`       // 期限切れ数
+	DueTodayCount    int            `json:"due_today_count"`     // 今日期限数
 	DueThisWeekCount int            `json:"due_this_week_count"` // 今週期限数
+}
+
+// ============================================================================
+// ドメインエラー
+// ============================================================================
+
+var (
+	// ErrAlreadyCompleted はTODOが既に完了済みの場合のエラー
+	ErrAlreadyCompleted = errors.New("todo is already completed")
+	// ErrNotCompleted はTODOが完了していない場合のエラー
+	ErrNotCompleted = errors.New("todo is not completed")
+)
+
+// ============================================================================
+// ドメインロジック（ビジネスルール）
+// ============================================================================
+
+// Complete はTODOを完了状態にする
+//
+// ビジネスルール:
+// - 既に完了済みの場合はエラー
+// - ステータスを "done" に変更
+func (t *Todo) Complete() error {
+	if t.Status == "done" {
+		return ErrAlreadyCompleted
+	}
+	t.Status = "done"
+	return nil
+}
+
+// Reopen はTODOを再開する（未完了状態に戻す）
+//
+// ビジネスルール:
+// - 完了済みでない場合はエラー
+// - ステータスを "todo" に変更
+func (t *Todo) Reopen() error {
+	if t.Status != "done" {
+		return ErrNotCompleted
+	}
+	t.Status = "todo"
+	return nil
 }

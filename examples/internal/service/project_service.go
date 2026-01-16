@@ -1,5 +1,5 @@
 // ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/internal/domain"
+// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/examples/internal/domain"
 
 package service
 
@@ -40,12 +40,14 @@ func (s *ProjectService) GetProject(ctx context.Context, projectID, userID int) 
 
 // UpdateProject はプロジェクト情報を更新
 func (s *ProjectService) UpdateProject(ctx context.Context, projectID int, input domain.UpdateProjectInput, userID int) (domain.Project, error) {
-	// オーナーであることを確認
-	isOwner, err := s.projectRepo.IsOwner(ctx, projectID, userID)
+	// プロジェクトを取得
+	project, err := s.projectRepo.FindByID(ctx, projectID, userID)
 	if err != nil {
 		return domain.Project{}, err
 	}
-	if !isOwner {
+
+	// ドメインロジックで権限チェック
+	if !project.CanBeUpdatedBy(userID) {
 		return domain.Project{}, errors.New("only project owner can update project")
 	}
 
@@ -54,12 +56,14 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID int, input
 
 // DeleteProject はプロジェクトを削除
 func (s *ProjectService) DeleteProject(ctx context.Context, projectID, userID int) error {
-	// オーナーであることを確認
-	isOwner, err := s.projectRepo.IsOwner(ctx, projectID, userID)
+	// プロジェクトを取得
+	project, err := s.projectRepo.FindByID(ctx, projectID, userID)
 	if err != nil {
 		return err
 	}
-	if !isOwner {
+
+	// ドメインロジックで権限チェック
+	if !project.CanBeDeletedBy(userID) {
 		return errors.New("only project owner can delete project")
 	}
 

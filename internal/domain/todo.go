@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"time"
 )
 
@@ -86,4 +87,45 @@ type Statistics struct {
 	OverdueCount     int            `json:"overdue_count"`       // 期限切れ数
 	DueTodayCount    int            `json:"due_today_count"`     // 今日期限数
 	DueThisWeekCount int            `json:"due_this_week_count"` // 今週期限数
+}
+
+// ============================================================================
+// ドメインエラー
+// ============================================================================
+
+var (
+	// ErrAlreadyCompleted はTODOが既に完了済みの場合のエラー
+	ErrAlreadyCompleted = errors.New("todo is already completed")
+	// ErrNotCompleted はTODOが完了していない場合のエラー
+	ErrNotCompleted = errors.New("todo is not completed")
+)
+
+// ============================================================================
+// ドメインロジック（ビジネスルール）
+// ============================================================================
+
+// Complete はTODOを完了状態にする
+//
+// ビジネスルール:
+// - 既に完了済みの場合はエラー
+// - ステータスを "done" に変更
+func (t *Todo) Complete() error {
+	if t.Status == "done" {
+		return ErrAlreadyCompleted
+	}
+	t.Status = "done"
+	return nil
+}
+
+// Reopen はTODOを再開する（未完了状態に戻す）
+//
+// ビジネスルール:
+// - 完了済みでない場合はエラー
+// - ステータスを "todo" に変更
+func (t *Todo) Reopen() error {
+	if t.Status != "done" {
+		return ErrNotCompleted
+	}
+	t.Status = "todo"
+	return nil
 }
