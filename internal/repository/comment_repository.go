@@ -11,15 +11,6 @@ import (
 	"gin-quickstart/internal/domain"
 )
 
-// CommentRepository はコメントのリポジトリインターフェース
-type CommentRepository interface {
-	Create(ctx context.Context, todoID int, input domain.CreateCommentInput, userID int) (domain.Comment, error)
-	FindByTodoID(ctx context.Context, todoID, userID int) ([]domain.Comment, error)
-	FindByID(ctx context.Context, commentID, userID int) (domain.Comment, error)
-	Update(ctx context.Context, commentID int, input domain.UpdateCommentInput, userID int) (domain.Comment, error)
-	Delete(ctx context.Context, commentID, userID int) error
-}
-
 // commentRepository はCommentRepositoryインターフェースの実装
 type commentRepository struct {
 	db          *sql.DB

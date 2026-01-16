@@ -11,13 +11,6 @@ import (
 	"gin-quickstart/internal/domain"
 )
 
-// TodoAssignmentRepository はTODO担当者のリポジトリインターフェース
-type TodoAssignmentRepository interface {
-	AssignUser(ctx context.Context, todoID int, input domain.AssignUserInput, requesterID int) (domain.TodoAssignment, error)
-	UnassignUser(ctx context.Context, todoID, userID, requesterID int) error
-	GetAssignments(ctx context.Context, todoID, requesterID int) ([]domain.TodoAssignment, error)
-}
-
 // todoAssignmentRepository はTodoAssignmentRepositoryインターフェースの実装
 type todoAssignmentRepository struct {
 	db          *sql.DB
