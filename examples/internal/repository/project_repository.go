@@ -112,18 +112,9 @@ func (r *projectRepository) FindByID(ctx context.Context, projectID, userID int)
 	return project, nil
 }
 
-// Update はプロジェクト情報を更新（オーナーのみ可能）
-func (r *projectRepository) Update(ctx context.Context, projectID int, input domain.UpdateProjectInput, userID int) (domain.Project, error) {
+// Update はプロジェクト情報を更新
+func (r *projectRepository) Update(ctx context.Context, projectID int, input domain.UpdateProjectInput) (domain.Project, error) {
 	var project domain.Project
-
-	// オーナーであることを確認
-	isOwner, err := r.IsOwner(ctx, projectID, userID)
-	if err != nil {
-		return project, err
-	}
-	if !isOwner {
-		return project, errors.New("only project owner can update project")
-	}
 
 	// 更新クエリを動的に構築
 	query := "UPDATE projects SET updated_at = NOW()"
@@ -144,7 +135,7 @@ func (r *projectRepository) Update(ctx context.Context, projectID int, input dom
 	query += " WHERE id = $1 RETURNING id, name, description, owner_id, created_at, updated_at"
 	args = append([]interface{}{projectID}, args...)
 
-	err = r.db.QueryRowContext(ctx, query, args...).Scan(
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&project.ID, &project.Name, &project.Description, &project.OwnerID,
 		&project.CreatedAt, &project.UpdatedAt,
 	)
@@ -155,17 +146,8 @@ func (r *projectRepository) Update(ctx context.Context, projectID int, input dom
 	return project, nil
 }
 
-// Delete はプロジェクトを削除（オーナーのみ可能）
-func (r *projectRepository) Delete(ctx context.Context, projectID, userID int) error {
-	// オーナーであることを確認
-	isOwner, err := r.IsOwner(ctx, projectID, userID)
-	if err != nil {
-		return err
-	}
-	if !isOwner {
-		return errors.New("only project owner can delete project")
-	}
-
+// Delete はプロジェクトを削除
+func (r *projectRepository) Delete(ctx context.Context, projectID int) error {
 	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM projects WHERE id = $1
 	`, projectID)
@@ -184,68 +166,17 @@ func (r *projectRepository) Delete(ctx context.Context, projectID, userID int) e
 	return nil
 }
 
-// AddMember はプロジェクトにメンバーを追加（オーナーまたは管理者のみ可能）
-func (r *projectRepository) AddMember(ctx context.Context, projectID int, input domain.AddMemberInput, requesterID int) error {
-	// リクエスターがオーナーまたは管理者であることを確認
-	var role string
-	err := r.db.QueryRowContext(ctx, `
-		SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2
-	`, projectID, requesterID).Scan(&role)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("requester is not a member of this project")
-		}
-		return err
-	}
-	if role != "owner" && role != "admin" {
-		return errors.New("only owner or admin can add members")
-	}
-
-	// メンバーを追加
-	_, err = r.db.ExecContext(ctx, `
+// AddMember はプロジェクトにメンバーを追加
+func (r *projectRepository) AddMember(ctx context.Context, projectID int, input domain.AddMemberInput) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO project_members (project_id, user_id, role)
 		VALUES ($1, $2, $3)
 	`, projectID, input.UserID, input.Role)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// RemoveMember はプロジェクトからメンバーを削除（オーナーまたは管理者のみ可能）
-func (r *projectRepository) RemoveMember(ctx context.Context, projectID, userID, requesterID int) error {
-	// リクエスターがオーナーまたは管理者であることを確認
-	var role string
-	err := r.db.QueryRowContext(ctx, `
-		SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2
-	`, projectID, requesterID).Scan(&role)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("requester is not a member of this project")
-		}
-		return err
-	}
-	if role != "owner" && role != "admin" {
-		return errors.New("only owner or admin can remove members")
-	}
-
-	// オーナーは削除できない
-	var targetRole string
-	err = r.db.QueryRowContext(ctx, `
-		SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2
-	`, projectID, userID).Scan(&targetRole)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("user is not a member of this project")
-		}
-		return err
-	}
-	if targetRole == "owner" {
-		return errors.New("cannot remove project owner")
-	}
-
-	// メンバーを削除
+// RemoveMember はプロジェクトからメンバーを削除
+func (r *projectRepository) RemoveMember(ctx context.Context, projectID, userID int) error {
 	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM project_members WHERE project_id = $1 AND user_id = $2
 	`, projectID, userID)
@@ -265,16 +196,7 @@ func (r *projectRepository) RemoveMember(ctx context.Context, projectID, userID,
 }
 
 // GetMembers はプロジェクトの全メンバーを取得
-func (r *projectRepository) GetMembers(ctx context.Context, projectID, userID int) ([]domain.ProjectMember, error) {
-	// メンバーであることを確認
-	isMember, err := r.IsMember(ctx, projectID, userID)
-	if err != nil {
-		return nil, err
-	}
-	if !isMember {
-		return nil, errors.New("access denied: not a member of this project")
-	}
-
+func (r *projectRepository) GetMembers(ctx context.Context, projectID int) ([]domain.ProjectMember, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT project_id, user_id, role, joined_at
 		FROM project_members
@@ -299,33 +221,8 @@ func (r *projectRepository) GetMembers(ctx context.Context, projectID, userID in
 	return members, nil
 }
 
-// UpdateMemberRole はメンバーの役割を更新（オーナーのみ可能）
-func (r *projectRepository) UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string, requesterID int) error {
-	// リクエスターがオーナーであることを確認
-	isOwner, err := r.IsOwner(ctx, projectID, requesterID)
-	if err != nil {
-		return err
-	}
-	if !isOwner {
-		return errors.New("only project owner can update member roles")
-	}
-
-	// オーナーの役割は変更できない
-	var targetRole string
-	err = r.db.QueryRowContext(ctx, `
-		SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2
-	`, projectID, targetUserID).Scan(&targetRole)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("user is not a member of this project")
-		}
-		return err
-	}
-	if targetRole == "owner" {
-		return errors.New("cannot change owner role")
-	}
-
-	// 役割を更新
+// UpdateMemberRole はメンバーの役割を更新
+func (r *projectRepository) UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string) error {
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE project_members
 		SET role = $1
@@ -373,4 +270,19 @@ func (r *projectRepository) IsMember(ctx context.Context, projectID, userID int)
 	}
 
 	return count > 0, nil
+}
+
+// GetRole はユーザーのプロジェクト内での役割を取得
+func (r *projectRepository) GetRole(ctx context.Context, projectID, userID int) (string, error) {
+	var role string
+	err := r.db.QueryRowContext(ctx, `
+		SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2
+	`, projectID, userID).Scan(&role)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errors.New("user is not a member of this project")
+		}
+		return "", err
+	}
+	return role, nil
 }

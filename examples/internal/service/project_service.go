@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"gin-quickstart/examples/internal/domain"
 	"gin-quickstart/examples/internal/repository"
@@ -39,30 +40,102 @@ func (s *ProjectService) GetProject(ctx context.Context, projectID, userID int) 
 
 // UpdateProject はプロジェクト情報を更新
 func (s *ProjectService) UpdateProject(ctx context.Context, projectID int, input domain.UpdateProjectInput, userID int) (domain.Project, error) {
-	return s.projectRepo.Update(ctx, projectID, input, userID)
+	// オーナーであることを確認
+	isOwner, err := s.projectRepo.IsOwner(ctx, projectID, userID)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	if !isOwner {
+		return domain.Project{}, errors.New("only project owner can update project")
+	}
+
+	return s.projectRepo.Update(ctx, projectID, input)
 }
 
 // DeleteProject はプロジェクトを削除
 func (s *ProjectService) DeleteProject(ctx context.Context, projectID, userID int) error {
-	return s.projectRepo.Delete(ctx, projectID, userID)
+	// オーナーであることを確認
+	isOwner, err := s.projectRepo.IsOwner(ctx, projectID, userID)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return errors.New("only project owner can delete project")
+	}
+
+	return s.projectRepo.Delete(ctx, projectID)
 }
 
 // AddMember はプロジェクトにメンバーを追加
 func (s *ProjectService) AddMember(ctx context.Context, projectID int, input domain.AddMemberInput, requesterID int) error {
-	return s.projectRepo.AddMember(ctx, projectID, input, requesterID)
+	// リクエスターがオーナーまたは管理者であることを確認
+	role, err := s.projectRepo.GetRole(ctx, projectID, requesterID)
+	if err != nil {
+		return err
+	}
+	if role != "owner" && role != "admin" {
+		return errors.New("only owner or admin can add members")
+	}
+
+	return s.projectRepo.AddMember(ctx, projectID, input)
 }
 
 // RemoveMember はプロジェクトからメンバーを削除
 func (s *ProjectService) RemoveMember(ctx context.Context, projectID, userID, requesterID int) error {
-	return s.projectRepo.RemoveMember(ctx, projectID, userID, requesterID)
+	// リクエスターがオーナーまたは管理者であることを確認
+	role, err := s.projectRepo.GetRole(ctx, projectID, requesterID)
+	if err != nil {
+		return err
+	}
+	if role != "owner" && role != "admin" {
+		return errors.New("only owner or admin can remove members")
+	}
+
+	// オーナーは削除できない
+	targetRole, err := s.projectRepo.GetRole(ctx, projectID, userID)
+	if err != nil {
+		return err
+	}
+	if targetRole == "owner" {
+		return errors.New("cannot remove project owner")
+	}
+
+	return s.projectRepo.RemoveMember(ctx, projectID, userID)
 }
 
 // GetMembers はプロジェクトの全メンバーを取得
 func (s *ProjectService) GetMembers(ctx context.Context, projectID, userID int) ([]domain.ProjectMember, error) {
-	return s.projectRepo.GetMembers(ctx, projectID, userID)
+	// メンバーであることを確認
+	isMember, err := s.projectRepo.IsMember(ctx, projectID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !isMember {
+		return nil, errors.New("access denied: not a member of this project")
+	}
+
+	return s.projectRepo.GetMembers(ctx, projectID)
 }
 
 // UpdateMemberRole はメンバーの役割を更新
 func (s *ProjectService) UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string, requesterID int) error {
-	return s.projectRepo.UpdateMemberRole(ctx, projectID, targetUserID, newRole, requesterID)
+	// リクエスターがオーナーであることを確認
+	isOwner, err := s.projectRepo.IsOwner(ctx, projectID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return errors.New("only project owner can update member roles")
+	}
+
+	// オーナーの役割は変更できない
+	targetRole, err := s.projectRepo.GetRole(ctx, projectID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if targetRole == "owner" {
+		return errors.New("cannot change owner role")
+	}
+
+	return s.projectRepo.UpdateMemberRole(ctx, projectID, targetUserID, newRole)
 }
