@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"gin-quickstart/examples/internal/domain"
 	"gin-quickstart/examples/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -55,8 +56,7 @@ func (h *NotificationHandler) GetUnreadNotifications(c *gin.Context) error {
 func (h *NotificationHandler) MarkNotificationAsRead(c *gin.Context) error {
 	notificationID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -89,8 +89,7 @@ func (h *NotificationHandler) MarkAllNotificationsAsRead(c *gin.Context) error {
 func (h *NotificationHandler) DeleteNotification(c *gin.Context) error {
 	notificationID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)

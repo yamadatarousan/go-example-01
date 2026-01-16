@@ -86,16 +86,24 @@ func ErrorHandler(handler AppHandler) gin.HandlerFunc {
 			}
 
 			// データベース関連のエラー
-			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-				// 認証エラーやデータ未発見エラーの場合
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error":   "Unauthorized",
-					"message": "Invalid email or password",
+			if errors.Is(err, sql.ErrNoRows) {
+				// データ未発見エラーの場合
+				c.JSON(http.StatusNotFound, gin.H{
+					"error":   "Not Found",
 				})
 				return
 			}
 
 			// その他の予期せぬエラーの場合
+
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			// 認証エラーの場合
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "Unauthorized",
+				"message": "Invalid email or password",
+			})
+			return
+		}
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Internal Server Error",
 			})

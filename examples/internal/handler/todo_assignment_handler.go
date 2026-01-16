@@ -1,5 +1,5 @@
 // ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/internal/domain"
+// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/examples/internal/domain"
 
 package handler
 
@@ -29,8 +29,7 @@ func NewTodoAssignmentHandler(assignmentService *service.TodoAssignmentService) 
 func (h *TodoAssignmentHandler) AssignUser(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -38,14 +37,12 @@ func (h *TodoAssignmentHandler) AssignUser(c *gin.Context) error {
 
 	var input domain.AssignUserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	assignment, err := h.assignmentService.AssignUser(c.Request.Context(), todoID, input, requesterID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusCreated, assignment)
@@ -56,14 +53,12 @@ func (h *TodoAssignmentHandler) AssignUser(c *gin.Context) error {
 func (h *TodoAssignmentHandler) UnassignUser(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	userID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -71,8 +66,7 @@ func (h *TodoAssignmentHandler) UnassignUser(c *gin.Context) error {
 
 	err = h.assignmentService.UnassignUser(c.Request.Context(), todoID, userID, requesterID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusNoContent, nil)
@@ -83,8 +77,7 @@ func (h *TodoAssignmentHandler) UnassignUser(c *gin.Context) error {
 func (h *TodoAssignmentHandler) GetAssignments(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -92,8 +85,7 @@ func (h *TodoAssignmentHandler) GetAssignments(c *gin.Context) error {
 
 	assignments, err := h.assignmentService.GetAssignments(c.Request.Context(), todoID, requesterID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusOK, assignments)

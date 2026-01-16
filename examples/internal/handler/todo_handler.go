@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -43,8 +41,7 @@ func (h *TodoHandler) GetTodo(c *gin.Context) error {
 	// URLパラメータからTODO IDを取得
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	// ログインユーザーのIDを取得
@@ -54,10 +51,6 @@ func (h *TodoHandler) GetTodo(c *gin.Context) error {
 	// TODOを取得
 	todo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
-			return nil
-		}
 		return err
 	}
 
@@ -90,8 +83,7 @@ func (h *TodoHandler) UpdateTodo(c *gin.Context) error {
 	// URLパラメータからTODO IDを取得
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	// リクエストボディから更新内容を取得
@@ -111,10 +103,6 @@ func (h *TodoHandler) UpdateTodo(c *gin.Context) error {
 	// TODOを更新
 	updatedTodo, err := h.todoService.UpdateTodo(c.Request.Context(), updateTodo)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
-			return nil
-		}
 		return err
 	}
 
@@ -127,8 +115,7 @@ func (h *TodoHandler) DeleteTodo(c *gin.Context) error {
 	// URLパラメータからTODO IDを取得
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	// ログインユーザーのIDを取得
@@ -138,10 +125,6 @@ func (h *TodoHandler) DeleteTodo(c *gin.Context) error {
 	// TODOを削除
 	err = h.todoService.DeleteTodo(c.Request.Context(), todoID, userID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
-			return nil
-		}
 		return err
 	}
 

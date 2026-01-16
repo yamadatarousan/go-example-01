@@ -30,8 +30,7 @@ func NewReminderHandler(reminderService *service.ReminderService) *ReminderHandl
 func (h *ReminderHandler) CreateReminder(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	var input struct {
@@ -39,15 +38,13 @@ func (h *ReminderHandler) CreateReminder(c *gin.Context) error {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	// ISO8601形式の日時をパース
 	remindAt, err := time.Parse(time.RFC3339, input.RemindAt)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format. Use ISO8601 format (e.g., 2026-01-15T15:00:00Z)"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	reminderInput := domain.CreateReminderInput{
@@ -68,8 +65,7 @@ func (h *ReminderHandler) CreateReminder(c *gin.Context) error {
 func (h *ReminderHandler) GetRemindersByTodoID(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	reminders, err := h.reminderService.GetRemindersByTodoID(c.Request.Context(), todoID)
@@ -85,8 +81,7 @@ func (h *ReminderHandler) GetRemindersByTodoID(c *gin.Context) error {
 func (h *ReminderHandler) DeleteReminder(c *gin.Context) error {
 	reminderID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reminder ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	err = h.reminderService.DeleteReminder(c.Request.Context(), reminderID)

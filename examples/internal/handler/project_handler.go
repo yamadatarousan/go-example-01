@@ -1,5 +1,5 @@
 // ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/internal/domain"
+// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/examples/internal/domain"
 
 package handler
 
@@ -32,8 +32,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) error {
 
 	var input domain.CreateProjectInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	project, err := h.projectService.CreateProject(c.Request.Context(), input, userID)
@@ -63,7 +62,8 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) error {
 func (h *ProjectHandler) GetProject(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -84,7 +84,8 @@ func (h *ProjectHandler) GetProject(c *gin.Context) error {
 func (h *ProjectHandler) UpdateProject(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -93,8 +94,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) error {
 
 	var input domain.UpdateProjectInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	project, err := h.projectService.UpdateProject(c.Request.Context(), projectID, input, userID)
@@ -111,7 +111,8 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) error {
 func (h *ProjectHandler) DeleteProject(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -132,7 +133,8 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) error {
 func (h *ProjectHandler) AddMember(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -141,8 +143,7 @@ func (h *ProjectHandler) AddMember(c *gin.Context) error {
 
 	var input domain.AddMemberInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	err = h.projectService.AddMember(c.Request.Context(), projectID, input, requesterID)
@@ -159,13 +160,15 @@ func (h *ProjectHandler) AddMember(c *gin.Context) error {
 func (h *ProjectHandler) RemoveMember(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
 	userID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -186,7 +189,8 @@ func (h *ProjectHandler) RemoveMember(c *gin.Context) error {
 func (h *ProjectHandler) GetMembers(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -207,13 +211,15 @@ func (h *ProjectHandler) GetMembers(c *gin.Context) error {
 func (h *ProjectHandler) UpdateMemberRole(c *gin.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return domain.ErrInvalidInput
+
 		return nil
 	}
 
@@ -224,8 +230,7 @@ func (h *ProjectHandler) UpdateMemberRole(c *gin.Context) error {
 		Role string `json:"role" binding:"required,oneof=owner admin member"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	err = h.projectService.UpdateMemberRole(c.Request.Context(), projectID, targetUserID, input.Role, requesterID)

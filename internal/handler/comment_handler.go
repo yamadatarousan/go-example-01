@@ -29,8 +29,7 @@ func NewCommentHandler(commentService *service.CommentService) *CommentHandler {
 func (h *CommentHandler) CreateComment(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -38,14 +37,12 @@ func (h *CommentHandler) CreateComment(c *gin.Context) error {
 
 	var input domain.CreateCommentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	comment, err := h.commentService.CreateComment(c.Request.Context(), todoID, input, userID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusCreated, comment)
@@ -56,8 +53,7 @@ func (h *CommentHandler) CreateComment(c *gin.Context) error {
 func (h *CommentHandler) GetCommentsByTodoID(c *gin.Context) error {
 	todoID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid todo ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -65,8 +61,7 @@ func (h *CommentHandler) GetCommentsByTodoID(c *gin.Context) error {
 
 	comments, err := h.commentService.GetCommentsByTodoID(c.Request.Context(), todoID, userID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusOK, comments)
@@ -77,8 +72,7 @@ func (h *CommentHandler) GetCommentsByTodoID(c *gin.Context) error {
 func (h *CommentHandler) GetComment(c *gin.Context) error {
 	commentID, err := strconv.Atoi(c.Param("commentId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -86,8 +80,7 @@ func (h *CommentHandler) GetComment(c *gin.Context) error {
 
 	comment, err := h.commentService.GetComment(c.Request.Context(), commentID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusOK, comment)
@@ -98,8 +91,7 @@ func (h *CommentHandler) GetComment(c *gin.Context) error {
 func (h *CommentHandler) UpdateComment(c *gin.Context) error {
 	commentID, err := strconv.Atoi(c.Param("commentId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -107,14 +99,12 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) error {
 
 	var input domain.UpdateCommentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	comment, err := h.commentService.UpdateComment(c.Request.Context(), commentID, input, userID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusOK, comment)
@@ -125,8 +115,7 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) error {
 func (h *CommentHandler) DeleteComment(c *gin.Context) error {
 	commentID, err := strconv.Atoi(c.Param("commentId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
-		return nil
+		return domain.ErrInvalidInput
 	}
 
 	claims := c.MustGet("claims").(*service.AppClaims)
@@ -134,8 +123,7 @@ func (h *CommentHandler) DeleteComment(c *gin.Context) error {
 
 	err = h.commentService.DeleteComment(c.Request.Context(), commentID, userID)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return nil
+		return err
 	}
 
 	c.JSON(http.StatusNoContent, nil)
