@@ -282,14 +282,15 @@ type ProjectRepository interface {
 	Create(ctx context.Context, input domain.CreateProjectInput, ownerID int) (domain.Project, error)
 	FindAll(ctx context.Context, userID int) ([]domain.Project, error)
 	FindByID(ctx context.Context, projectID, userID int) (domain.Project, error)
-	Update(ctx context.Context, projectID int, input domain.UpdateProjectInput, userID int) (domain.Project, error)
-	Delete(ctx context.Context, projectID, userID int) error
-	AddMember(ctx context.Context, projectID int, input domain.AddMemberInput, ownerID int) error
-	RemoveMember(ctx context.Context, projectID, userID, requesterID int) error
-	GetMembers(ctx context.Context, projectID, userID int) ([]domain.ProjectMember, error)
-	UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string, requesterID int) error
+	Update(ctx context.Context, projectID int, input domain.UpdateProjectInput) (domain.Project, error)
+	Delete(ctx context.Context, projectID int) error
+	AddMember(ctx context.Context, projectID int, input domain.AddMemberInput) error
+	RemoveMember(ctx context.Context, projectID, userID int) error
+	GetMembers(ctx context.Context, projectID int) ([]domain.ProjectMember, error)
+	UpdateMemberRole(ctx context.Context, projectID, targetUserID int, newRole string) error
 	IsOwner(ctx context.Context, projectID, userID int) (bool, error)
 	IsMember(ctx context.Context, projectID, userID int) (bool, error)
+	GetRole(ctx context.Context, projectID, userID int) (string, error)
 }
 
 // CommentRepository はコメントデータアクセスの層境界インターフェース

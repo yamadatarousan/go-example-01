@@ -1,5 +1,5 @@
 // ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/internal/domain" → "gin-quickstart/internal/domain"
+// 例: "gin-quickstart/internal/domain" → "gin-quickstart/internal/domain"
 
 package repository
 
@@ -13,28 +13,19 @@ import (
 
 // commentRepository はCommentRepositoryインターフェースの実装
 type commentRepository struct {
-	db          *sql.DB
-	todoRepo    TodoRepository
-	projectRepo ProjectRepository
+	db *sql.DB
 }
 
 // NewCommentRepository はCommentRepositoryの新しいインスタンスを作成
-func NewCommentRepository(db *sql.DB, todoRepo TodoRepository, projectRepo ProjectRepository) CommentRepository {
+func NewCommentRepository(db *sql.DB) CommentRepository {
 	return &commentRepository{
-		db:          db,
-		todoRepo:    todoRepo,
-		projectRepo: projectRepo,
+		db: db,
 	}
 }
 
 // Create は新しいコメントを作成
 func (r *commentRepository) Create(ctx context.Context, todoID int, input domain.CreateCommentInput, userID int) (domain.Comment, error) {
 	var comment domain.Comment
-
-	// TODOへのアクセス権を確認
-	if err := r.checkTodoAccess(ctx, todoID, userID); err != nil {
-		return comment, err
-	}
 
 	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO comments (todo_id, user_id, content)
@@ -53,11 +44,6 @@ func (r *commentRepository) Create(ctx context.Context, todoID int, input domain
 
 // FindByTodoID は指定されたTODOの全てのコメントを取得
 func (r *commentRepository) FindByTodoID(ctx context.Context, todoID, userID int) ([]domain.Comment, error) {
-	// TODOへのアクセス権を確認
-	if err := r.checkTodoAccess(ctx, todoID, userID); err != nil {
-		return nil, err
-	}
-
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, todo_id, user_id, content, created_at, updated_at
 		FROM comments
@@ -86,7 +72,6 @@ func (r *commentRepository) FindByTodoID(ctx context.Context, todoID, userID int
 func (r *commentRepository) FindByID(ctx context.Context, commentID, userID int) (domain.Comment, error) {
 	var comment domain.Comment
 
-	// コメントを取得
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, todo_id, user_id, content, created_at, updated_at
 		FROM comments
@@ -99,11 +84,6 @@ func (r *commentRepository) FindByID(ctx context.Context, commentID, userID int)
 		if errors.Is(err, sql.ErrNoRows) {
 			return comment, errors.New("comment not found")
 		}
-		return comment, err
-	}
-
-	// TODOへのアクセス権を確認
-	if err := r.checkTodoAccess(ctx, comment.TodoID, userID); err != nil {
 		return comment, err
 	}
 
@@ -151,36 +131,5 @@ func (r *commentRepository) Delete(ctx context.Context, commentID, userID int) e
 		return errors.New("comment not found or access denied")
 	}
 
-	return nil
-}
-
-// checkTodoAccess はTODOへのアクセス権を確認
-func (r *commentRepository) checkTodoAccess(ctx context.Context, todoID, userID int) error {
-	// TODOを取得してアクセス権を確認
-	_, err := r.todoRepo.FindByID(ctx, todoID, userID)
-	if err != nil {
-		// ユーザーの所有TODOでない場合、プロジェクトメンバーとしてアクセス可能かチェック
-		// まずTODO情報を取得（システム権限で）
-		todoInfo, sysErr := r.todoRepo.FindByID(ctx, todoID, 0) // userID=0でシステム権限
-		if sysErr != nil {
-			return errors.New("todo not found or access denied")
-		}
-
-		// プロジェクトTODOであることを確認
-		if todoInfo.ProjectID == nil {
-			return errors.New("access denied: not the todo owner")
-		}
-
-		// プロジェクトメンバーであることを確認
-		isMember, memberErr := r.projectRepo.IsMember(ctx, *todoInfo.ProjectID, userID)
-		if memberErr != nil || !isMember {
-			return errors.New("access denied: not a project member")
-		}
-
-		// プロジェクトメンバーならアクセス可能
-		return nil
-	}
-
-	// TODOが見つかり、ユーザーの所有である場合
 	return nil
 }

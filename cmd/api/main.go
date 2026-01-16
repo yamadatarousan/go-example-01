@@ -38,24 +38,24 @@ func main() {
 	// Repository層
 	todoRepo := repository.NewTodoRepository(db)
 	userRepo := repository.NewUserRepository(db)
-	categoryRepo := repository.NewCategoryRepository(db)         // Phase 2で追加
+	categoryRepo := repository.NewCategoryRepository(db)       // Phase 2で追加
 	notificationRepo := repository.NewNotificationRepository(db) // Phase 4で追加
-	reminderRepo := repository.NewReminderRepository(db)         // Phase 4で追加
+	reminderRepo := repository.NewReminderRepository(db)       // Phase 4で追加
 	// tagRepo := repository.NewTagRepository(db)         // Phase 2で追加（Phase 3で使用）
-	projectRepo := repository.NewProjectRepository(db)                                  // Phase 5で追加
-	commentRepo := repository.NewCommentRepository(db, todoRepo, projectRepo)           // Phase 5で追加
-	assignmentRepo := repository.NewTodoAssignmentRepository(db, todoRepo, projectRepo) // Phase 5で追加
+	projectRepo := repository.NewProjectRepository(db)             // Phase 5で追加
+	commentRepo := repository.NewCommentRepository(db)             // Phase 5で追加
+	assignmentRepo := repository.NewTodoAssignmentRepository(db)   // Phase 5で追加
 
 	// Service層
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
-	categoryService := service.NewCategoryService(categoryRepo)                             // Phase 2で追加
-	notificationService := service.NewNotificationService(notificationRepo)                 // Phase 4で追加
-	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo) // Phase 4で追加
-	projectService := service.NewProjectService(projectRepo)                                // Phase 5で追加
-	commentService := service.NewCommentService(commentRepo)                                // Phase 5で追加
-	assignmentService := service.NewTodoAssignmentService(assignmentRepo)                   // Phase 5で追加
+	categoryService := service.NewCategoryService(categoryRepo)                            // Phase 2で追加
+	notificationService := service.NewNotificationService(notificationRepo)                           // Phase 4で追加
+	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo)               // Phase 4で追加
+	projectService := service.NewProjectService(projectRepo)                                              // Phase 5で追加
+	commentService := service.NewCommentService(commentRepo, todoRepo, projectRepo)                       // Phase 5で追加
+	assignmentService := service.NewTodoAssignmentService(assignmentRepo, todoRepo, projectRepo)          // Phase 5で追加
 
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
@@ -136,11 +136,11 @@ func setupRouter(
 	userHandler *handler.UserHandler,
 	todoHandler *handler.TodoHandler,
 	adminHandler *handler.AdminHandler,
-	categoryHandler *handler.CategoryHandler, // Phase 2で追加
+	categoryHandler *handler.CategoryHandler,         // Phase 2で追加
 	notificationHandler *handler.NotificationHandler, // Phase 4で追加
-	reminderHandler *handler.ReminderHandler, // Phase 4で追加
-	projectHandler *handler.ProjectHandler, // Phase 5で追加
-	commentHandler *handler.CommentHandler, // Phase 5で追加
+	reminderHandler *handler.ReminderHandler,         // Phase 4で追加
+	projectHandler *handler.ProjectHandler,           // Phase 5で追加
+	commentHandler *handler.CommentHandler,           // Phase 5で追加
 	assignmentHandler *handler.TodoAssignmentHandler, // Phase 5で追加
 ) *gin.Engine {
 	router := gin.New()
@@ -205,47 +205,47 @@ func setupRouter(
 		v1.GET("/todos/statistics", handler.ErrorHandler(todoHandler.GetStatistics)) // TODO統計情報
 
 		// カテゴリーエンドポイント（Phase 2で追加）
-		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))       // カテゴリー作成
-		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))         // カテゴリー一覧
-		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))       // カテゴリー取得
-		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))    // カテゴリー更新
+		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))      // カテゴリー作成
+		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))        // カテゴリー一覧
+		v1.GET("/categories/:id", handler.ErrorHandler(categoryHandler.GetCategory))      // カテゴリー取得
+		v1.PUT("/categories/:id", handler.ErrorHandler(categoryHandler.UpdateCategory))   // カテゴリー更新
 		v1.DELETE("/categories/:id", handler.ErrorHandler(categoryHandler.DeleteCategory)) // カテゴリー削除
 
 		// 通知エンドポイント（Phase 4で追加）
-		v1.GET("/notifications", handler.ErrorHandler(notificationHandler.GetNotifications))                    // 通知一覧
-		v1.GET("/notifications/unread", handler.ErrorHandler(notificationHandler.GetUnreadNotifications))       // 未読通知
-		v1.GET("/notifications/stream", notificationHandler.StreamNotifications)                                // SSEストリーム
-		v1.PUT("/notifications/:id/read", handler.ErrorHandler(notificationHandler.MarkNotificationAsRead))     // 既読にする
+		v1.GET("/notifications", handler.ErrorHandler(notificationHandler.GetNotifications))           // 通知一覧
+		v1.GET("/notifications/unread", handler.ErrorHandler(notificationHandler.GetUnreadNotifications)) // 未読通知
+		v1.GET("/notifications/stream", notificationHandler.StreamNotifications)                       // SSEストリーム
+		v1.PUT("/notifications/:id/read", handler.ErrorHandler(notificationHandler.MarkNotificationAsRead)) // 既読にする
 		v1.PUT("/notifications/read-all", handler.ErrorHandler(notificationHandler.MarkAllNotificationsAsRead)) // 全て既読
-		v1.DELETE("/notifications/:id", handler.ErrorHandler(notificationHandler.DeleteNotification))           // 通知削除
+		v1.DELETE("/notifications/:id", handler.ErrorHandler(notificationHandler.DeleteNotification))  // 通知削除
 
 		// リマインダーエンドポイント（Phase 4で追加）
-		v1.POST("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.CreateReminder))      // リマインダー作成
-		v1.GET("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.GetRemindersByTodoID)) // リマインダー一覧
-		v1.DELETE("/reminders/:id", handler.ErrorHandler(reminderHandler.DeleteReminder))          // リマインダー削除
+		v1.POST("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.CreateReminder))        // リマインダー作成
+		v1.GET("/todos/:id/reminders", handler.ErrorHandler(reminderHandler.GetRemindersByTodoID))   // リマインダー一覧
+		v1.DELETE("/reminders/:id", handler.ErrorHandler(reminderHandler.DeleteReminder))            // リマインダー削除
 
 		// プロジェクトエンドポイント（Phase 5で追加）
-		v1.POST("/projects", handler.ErrorHandler(projectHandler.CreateProject))                            // プロジェクト作成
-		v1.GET("/projects", handler.ErrorHandler(projectHandler.GetProjects))                               // プロジェクト一覧
-		v1.GET("/projects/:id", handler.ErrorHandler(projectHandler.GetProject))                            // プロジェクト取得
-		v1.PUT("/projects/:id", handler.ErrorHandler(projectHandler.UpdateProject))                         // プロジェクト更新
-		v1.DELETE("/projects/:id", handler.ErrorHandler(projectHandler.DeleteProject))                      // プロジェクト削除
-		v1.POST("/projects/:id/members", handler.ErrorHandler(projectHandler.AddMember))                    // メンバー追加
-		v1.GET("/projects/:id/members", handler.ErrorHandler(projectHandler.GetMembers))                    // メンバー一覧
-		v1.DELETE("/projects/:id/members/:userId", handler.ErrorHandler(projectHandler.RemoveMember))       // メンバー削除
+		v1.POST("/projects", handler.ErrorHandler(projectHandler.CreateProject))                       // プロジェクト作成
+		v1.GET("/projects", handler.ErrorHandler(projectHandler.GetProjects))                          // プロジェクト一覧
+		v1.GET("/projects/:id", handler.ErrorHandler(projectHandler.GetProject))                       // プロジェクト取得
+		v1.PUT("/projects/:id", handler.ErrorHandler(projectHandler.UpdateProject))                    // プロジェクト更新
+		v1.DELETE("/projects/:id", handler.ErrorHandler(projectHandler.DeleteProject))                 // プロジェクト削除
+		v1.POST("/projects/:id/members", handler.ErrorHandler(projectHandler.AddMember))               // メンバー追加
+		v1.GET("/projects/:id/members", handler.ErrorHandler(projectHandler.GetMembers))               // メンバー一覧
+		v1.DELETE("/projects/:id/members/:userId", handler.ErrorHandler(projectHandler.RemoveMember))  // メンバー削除
 		v1.PUT("/projects/:id/members/:userId/role", handler.ErrorHandler(projectHandler.UpdateMemberRole)) // 役割更新
 
 		// TODO担当者エンドポイント（Phase 5で追加）
-		v1.POST("/todos/:id/assignments", handler.ErrorHandler(assignmentHandler.AssignUser))             // 担当者割り当て
-		v1.GET("/todos/:id/assignments", handler.ErrorHandler(assignmentHandler.GetAssignments))          // 担当者一覧
+		v1.POST("/todos/:id/assignments", handler.ErrorHandler(assignmentHandler.AssignUser))         // 担当者割り当て
+		v1.GET("/todos/:id/assignments", handler.ErrorHandler(assignmentHandler.GetAssignments))      // 担当者一覧
 		v1.DELETE("/todos/:id/assignments/:userId", handler.ErrorHandler(assignmentHandler.UnassignUser)) // 担当者解除
 
 		// コメントエンドポイント（Phase 5で追加）
-		v1.POST("/todos/:id/comments", handler.ErrorHandler(commentHandler.CreateComment))      // コメント作成
-		v1.GET("/todos/:id/comments", handler.ErrorHandler(commentHandler.GetCommentsByTodoID)) // コメント一覧
-		v1.GET("/comments/:commentId", handler.ErrorHandler(commentHandler.GetComment))         // コメント取得
-		v1.PUT("/comments/:commentId", handler.ErrorHandler(commentHandler.UpdateComment))      // コメント更新
-		v1.DELETE("/comments/:commentId", handler.ErrorHandler(commentHandler.DeleteComment))   // コメント削除
+		v1.POST("/todos/:id/comments", handler.ErrorHandler(commentHandler.CreateComment))            // コメント作成
+		v1.GET("/todos/:id/comments", handler.ErrorHandler(commentHandler.GetCommentsByTodoID))       // コメント一覧
+		v1.GET("/comments/:commentId", handler.ErrorHandler(commentHandler.GetComment))               // コメント取得
+		v1.PUT("/comments/:commentId", handler.ErrorHandler(commentHandler.UpdateComment))            // コメント更新
+		v1.DELETE("/comments/:commentId", handler.ErrorHandler(commentHandler.DeleteComment))         // コメント削除
 
 		// 管理者専用エンドポイント
 		adminRoutes := v1.Group("/admin")
