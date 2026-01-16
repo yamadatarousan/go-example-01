@@ -758,62 +758,79 @@ Webフロントエンドの実装
   - 型安全性によるバグの早期発見
   - IDEの強力な補完・リファクタリング支援
   - APIレスポンスの型定義
-- **フレームワーク**: React / Next.js
-  - React 18+ (最新機能)
-  - Next.js 14+ (App Router推奨)
-  - Server Components対応
-- **状態管理**: Zustand / Redux Toolkit
-  - Zustand: 軽量でシンプル（推奨）
-  - Redux Toolkit: 大規模アプリ向け
+- **フレームワーク**: Next.js 14 (App Router)
+  - React 18+ Server Components
+  - Server Actions for mutations
+  - App Router (Pages Routerは使用しない)
+- **データ取得戦略**
+  - **Server Components**: GETリクエスト（参照系）はRSCで直接fetch
+  - **Server Actions**: POST/PUT/DELETE（更新系）はServer Actionsで実装
+  - **TanStack Query**: クライアント側の楽観的更新・リアルタイム更新のみ（補助的）
+  - **HTTPクライアント**: fetch API（Axiosは使用しない）
+- **状態管理**: Zustand
+  - 軽量でシンプル、RSCと相性が良い
+  - グローバルなUI状態（モーダル、トースト等）に使用
 - **UIライブラリ**: Tailwind CSS + shadcn/ui
   - Tailwind CSS: ユーティリティファーストCSS
   - shadcn/ui: 再利用可能なコンポーネント
-- **HTTP Client**: Axios / TanStack Query
-  - Axios: HTTP通信
-  - TanStack Query (React Query): サーバーステート管理
 - **フォーム**: React Hook Form + Zod
   - React Hook Form: パフォーマンス重視
   - Zod: TypeScript型安全なバリデーション
-- **テスト**: Vitest + React Testing Library
-  - Vitest: 高速なテストランナー
-  - React Testing Library: コンポーネントテスト
-- **E2Eテスト**: Playwright
-  - クロスブラウザテスト対応
+- **認証戦略**
+  - **JWT保存**: httpOnly cookie（XSS攻撃対策）
+  - **CSRF対策**: SameSite=Strict + CSRFトークン
+  - **認証チェック**: Next.js middleware
+  - **トークン更新**: リフレッシュトークン方式
+- **テスト戦略**
+  - **Server Components**: 統合テスト・E2E中心（Playwright）
+  - **Client Components**: Vitest + React Testing Library
+  - **API Routes/Server Actions**: Vitest統合テスト
+  - **E2E**: Playwright（クロスブラウザ対応）
 
 **8.2 プロジェクト構造**
 ```
 frontend/
 ├── src/
 │   ├── app/                  # Next.js App Router
-│   │   ├── (auth)/          # 認証関連ページ
+│   │   ├── (auth)/          # 認証関連ページ（Route Group）
 │   │   │   ├── login/
 │   │   │   └── signup/
-│   │   ├── dashboard/       # ダッシュボード
-│   │   └── todos/           # TODO関連ページ
+│   │   ├── dashboard/       # ダッシュボード（Server Component）
+│   │   ├── todos/           # TODO関連ページ（Server Component）
+│   │   ├── middleware.ts    # 認証チェック・JWT検証
+│   │   └── layout.tsx       # ルートレイアウト
+│   ├── actions/             # Server Actions（mutations）
+│   │   ├── auth.ts         # 認証関連アクション
+│   │   ├── todos.ts        # TODO CRUD
+│   │   └── projects.ts     # プロジェクト管理
 │   ├── components/          # 再利用可能なコンポーネント
 │   │   ├── ui/             # shadcn/uiコンポーネント
 │   │   ├── layouts/        # レイアウトコンポーネント
-│   │   └── features/       # 機能別コンポーネント
+│   │   └── features/       # 機能別コンポーネント（Client Components）
 │   ├── lib/                 # ユーティリティ・設定
-│   │   ├── api/            # API通信
-│   │   ├── hooks/          # カスタムフック
+│   │   ├── api/            # fetch関数（Server Component用）
+│   │   ├── hooks/          # カスタムフック（Client Component用）
+│   │   ├── auth/           # JWT検証・CSRF対策
 │   │   └── utils/          # ヘルパー関数
 │   ├── types/               # TypeScript型定義
 │   │   ├── api.ts          # APIレスポンス型
 │   │   ├── models.ts       # ドメインモデル型
 │   │   └── index.ts
-│   └── store/               # 状態管理
+│   └── store/               # 状態管理（Zustand、UI状態のみ）
 └── public/                  # 静的ファイル
 ```
 
 **8.3 主要画面**
-- [ ] ログイン画面（React Hook Form + Zod）
-- [ ] サインアップ画面
-- [ ] ダッシュボード（統計情報表示）
-- [ ] TODO一覧（フィルタリング・検索）
-- [ ] TODO詳細・編集（ドラッグ&ドロップ）
-- [ ] プロジェクト管理
-- [ ] 設定画面（プロフィール編集）
+- [ ] ログイン画面（Client Component: React Hook Form + Zod + Server Action）
+- [ ] サインアップ画面（Client Component: React Hook Form + Zod + Server Action）
+- [ ] ダッシュボード（Server Component: SSR統計情報表示）
+- [ ] TODO一覧（Server Component + Client Component: フィルタリング・検索）
+  - リスト表示: Server Component
+  - フィルタUI: Client Component
+  - リアルタイム更新: TanStack Query（楽観的更新）
+- [ ] TODO詳細・編集（Client Component: ドラッグ&ドロップ + Server Action）
+- [ ] プロジェクト管理（Server Component + Client Component）
+- [ ] 設定画面（Client Component: プロフィール編集 + Server Action）
 
 **8.4 型定義の実装**
 ```typescript
@@ -852,12 +869,90 @@ export interface ApiError {
 }
 ```
 
-**8.5 API通信の実装**
-- [ ] Axiosインスタンスの設定（JWT自動付与）
+**8.5 データ取得・API通信の実装**
+- [ ] Server Components用fetch関数（JWT自動付与、Next.js middleware経由）
+- [ ] Server Actions実装（CSRF保護付き）
 - [ ] API型定義の自動生成（openapi-typescript）
-- [ ] エラーハンドリング
-- [ ] リトライロジック
-- [ ] TanStack Queryでのキャッシング
+- [ ] エラーハンドリング（統一エラー処理）
+- [ ] TanStack Query設定（クライアント側の楽観的更新用、補助的）
+- [ ] httpOnly cookie認証フロー実装
+  - [ ] ログイン時のcookie設定
+  - [ ] middlewareでのJWT検証
+  - [ ] CSRF対策実装
+
+**実装パターン例:**
+
+```typescript
+// app/todos/page.tsx (Server Component)
+async function TodosPage() {
+  // Server Componentで直接fetch（JWT自動付与）
+  const todos = await fetch('http://backend/api/v1/todos', {
+    cache: 'no-store', // リアルタイムデータの場合
+  }).then(r => r.json())
+
+  return <TodoList todos={todos} />
+}
+
+// actions/todos.ts (Server Action)
+'use server'
+import { revalidatePath } from 'next/cache'
+
+export async function createTodo(formData: FormData) {
+  const csrfToken = formData.get('csrfToken')
+  // CSRF検証
+
+  const response = await fetch('http://backend/api/v1/todos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: formData.get('name'),
+      description: formData.get('description'),
+    }),
+  })
+
+  if (!response.ok) throw new Error('Failed to create todo')
+
+  revalidatePath('/todos') // キャッシュ再検証
+  return response.json()
+}
+
+// components/TodoForm.tsx (Client Component)
+'use client'
+import { createTodo } from '@/actions/todos'
+import { useTransition } from 'react'
+
+export function TodoForm() {
+  const [isPending, startTransition] = useTransition()
+
+  async function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      await createTodo(formData)
+    })
+  }
+
+  return (
+    <form action={handleSubmit}>
+      {/* フォームフィールド */}
+      <button disabled={isPending}>Create</button>
+    </form>
+  )
+}
+
+// middleware.ts (JWT検証)
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('token')
+
+  if (!token && !request.nextUrl.pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // JWT検証ロジック
+  return NextResponse.next()
+}
+```
 
 **8.6 レスポンシブデザイン**
 - [ ] PC対応（1920px以上）
