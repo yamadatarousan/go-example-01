@@ -153,8 +153,8 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	notificationRepo := repository.NewNotificationRepository(dbConn)
 	reminderRepo := repository.NewReminderRepository(dbConn)
 	projectRepo := repository.NewProjectRepository(dbConn)
-	commentRepo := repository.NewCommentRepository(dbConn, todoRepo, projectRepo)
-	assignmentRepo := repository.NewTodoAssignmentRepository(dbConn, todoRepo, projectRepo)
+	commentRepo := repository.NewCommentRepository(dbConn)
+	assignmentRepo := repository.NewTodoAssignmentRepository(dbConn)
 
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
@@ -163,8 +163,8 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	notificationService := service.NewNotificationService(notificationRepo)
 	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo)
 	projectService := service.NewProjectService(projectRepo)
-	commentService := service.NewCommentService(commentRepo)
-	assignmentService := service.NewTodoAssignmentService(assignmentRepo)
+	commentService := service.NewCommentService(commentRepo, todoRepo, projectRepo)
+	assignmentService := service.NewTodoAssignmentService(assignmentRepo, todoRepo, projectRepo)
 
 	userHandler := handler.NewUserHandler(authService)
 	todoHandler := handler.NewTodoHandler(todoService)

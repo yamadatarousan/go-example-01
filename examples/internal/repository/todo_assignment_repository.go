@@ -13,17 +13,13 @@ import (
 
 // todoAssignmentRepository はTodoAssignmentRepositoryインターフェースの実装
 type todoAssignmentRepository struct {
-	db          *sql.DB
-	todoRepo    TodoRepository
-	projectRepo ProjectRepository
+	db *sql.DB
 }
 
 // NewTodoAssignmentRepository はTodoAssignmentRepositoryの新しいインスタンスを作成
-func NewTodoAssignmentRepository(db *sql.DB, todoRepo TodoRepository, projectRepo ProjectRepository) TodoAssignmentRepository {
+func NewTodoAssignmentRepository(db *sql.DB) TodoAssignmentRepository {
 	return &todoAssignmentRepository{
-		db:          db,
-		todoRepo:    todoRepo,
-		projectRepo: projectRepo,
+		db: db,
 	}
 }
 
@@ -31,25 +27,7 @@ func NewTodoAssignmentRepository(db *sql.DB, todoRepo TodoRepository, projectRep
 func (r *todoAssignmentRepository) AssignUser(ctx context.Context, todoID int, input domain.AssignUserInput, requesterID int) (domain.TodoAssignment, error) {
 	var assignment domain.TodoAssignment
 
-	// TODOへのアクセス権を確認
-	todo, err := r.checkTodoAccessAndGetTodo(ctx, todoID, requesterID)
-	if err != nil {
-		return assignment, err
-	}
-
-	// プロジェクトTODOの場合、割り当て先ユーザーがプロジェクトメンバーであることを確認
-	if todo.ProjectID != nil {
-		isMember, err := r.projectRepo.IsMember(ctx, *todo.ProjectID, input.UserID)
-		if err != nil {
-			return assignment, err
-		}
-		if !isMember {
-			return assignment, errors.New("assigned user must be a project member")
-		}
-	}
-
-	// 担当者を割り当て
-	err = r.db.QueryRowContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO todo_assignments (todo_id, user_id)
 		VALUES ($1, $2)
 		RETURNING todo_id, user_id, assigned_at
@@ -65,11 +43,6 @@ func (r *todoAssignmentRepository) AssignUser(ctx context.Context, todoID int, i
 
 // UnassignUser はTODOから担当者を解除
 func (r *todoAssignmentRepository) UnassignUser(ctx context.Context, todoID, userID, requesterID int) error {
-	// TODOへのアクセス権を確認
-	if _, err := r.checkTodoAccessAndGetTodo(ctx, todoID, requesterID); err != nil {
-		return err
-	}
-
 	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM todo_assignments WHERE todo_id = $1 AND user_id = $2
 	`, todoID, userID)
@@ -90,11 +63,6 @@ func (r *todoAssignmentRepository) UnassignUser(ctx context.Context, todoID, use
 
 // GetAssignments は指定されたTODOの全ての担当者を取得
 func (r *todoAssignmentRepository) GetAssignments(ctx context.Context, todoID, requesterID int) ([]domain.TodoAssignment, error) {
-	// TODOへのアクセス権を確認
-	if _, err := r.checkTodoAccessAndGetTodo(ctx, todoID, requesterID); err != nil {
-		return nil, err
-	}
-
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT todo_id, user_id, assigned_at
 		FROM todo_assignments
@@ -117,34 +85,4 @@ func (r *todoAssignmentRepository) GetAssignments(ctx context.Context, todoID, r
 	}
 
 	return assignments, nil
-}
-
-// checkTodoAccessAndGetTodo はTODOへのアクセス権を確認してTODOを返す
-func (r *todoAssignmentRepository) checkTodoAccessAndGetTodo(ctx context.Context, todoID, userID int) (domain.Todo, error) {
-	// TODOを取得
-	todo, err := r.todoRepo.FindByID(ctx, todoID, userID)
-	if err != nil {
-		// ユーザーの所有TODOでない場合、プロジェクトメンバーとしてアクセス可能かチェック
-		// まずTODO情報を取得（システム権限で）
-		todoInfo, sysErr := r.todoRepo.FindByID(ctx, todoID, 0) // userID=0でシステム権限
-		if sysErr != nil {
-			return domain.Todo{}, errors.New("todo not found or access denied")
-		}
-
-		// プロジェクトTODOであることを確認
-		if todoInfo.ProjectID == nil {
-			return domain.Todo{}, errors.New("access denied: not the todo owner")
-		}
-
-		// プロジェクトメンバーであることを確認
-		isMember, memberErr := r.projectRepo.IsMember(ctx, *todoInfo.ProjectID, userID)
-		if memberErr != nil || !isMember {
-			return domain.Todo{}, errors.New("access denied: not a project member")
-		}
-
-		// プロジェクトメンバーならアクセス可能
-		return todoInfo, nil
-	}
-
-	return todo, nil
 }

@@ -42,20 +42,20 @@ func main() {
 	notificationRepo := repository.NewNotificationRepository(db) // Phase 4で追加
 	reminderRepo := repository.NewReminderRepository(db)       // Phase 4で追加
 	// tagRepo := repository.NewTagRepository(db)         // Phase 2で追加（Phase 3で使用）
-	projectRepo := repository.NewProjectRepository(db)                        // Phase 5で追加
-	commentRepo := repository.NewCommentRepository(db, todoRepo, projectRepo) // Phase 5で追加
-	assignmentRepo := repository.NewTodoAssignmentRepository(db, todoRepo, projectRepo) // Phase 5で追加
+	projectRepo := repository.NewProjectRepository(db)             // Phase 5で追加
+	commentRepo := repository.NewCommentRepository(db)             // Phase 5で追加
+	assignmentRepo := repository.NewTodoAssignmentRepository(db)   // Phase 5で追加
 
 	// Service層
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
 	categoryService := service.NewCategoryService(categoryRepo)                            // Phase 2で追加
-	notificationService := service.NewNotificationService(notificationRepo)                 // Phase 4で追加
-	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo) // Phase 4で追加
-	projectService := service.NewProjectService(projectRepo)                               // Phase 5で追加
-	commentService := service.NewCommentService(commentRepo)                               // Phase 5で追加
-	assignmentService := service.NewTodoAssignmentService(assignmentRepo)                  // Phase 5で追加
+	notificationService := service.NewNotificationService(notificationRepo)                           // Phase 4で追加
+	reminderService := service.NewReminderService(reminderRepo, notificationRepo, todoRepo)               // Phase 4で追加
+	projectService := service.NewProjectService(projectRepo)                                              // Phase 5で追加
+	commentService := service.NewCommentService(commentRepo, todoRepo, projectRepo)                       // Phase 5で追加
+	assignmentService := service.NewTodoAssignmentService(assignmentRepo, todoRepo, projectRepo)          // Phase 5で追加
 
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
