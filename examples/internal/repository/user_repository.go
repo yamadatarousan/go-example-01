@@ -43,6 +43,20 @@ func (r *userRepository) FindUserByEmail(ctx context.Context, email string) (dom
 	return user, nil
 }
 
+// FindUserByID はユーザーIDでユーザーを検索
+func (r *userRepository) FindUserByID(ctx context.Context, userID int) (domain.User, error) {
+	var user domain.User
+	err := r.db.QueryRowContext(
+		ctx,
+		"SELECT id, email, password_hash, created_at, role FROM users WHERE id = $1",
+		userID,
+	).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.Role)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
 // FindAllUsers は全てのユーザーを取得
 func (r *userRepository) FindAllUsers(ctx context.Context) ([]domain.User, error) {
 	rows, err := r.db.QueryContext(ctx, "SELECT id, email, created_at, role FROM users")
