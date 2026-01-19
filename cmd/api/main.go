@@ -45,9 +45,10 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)             // Phase 5で追加
 	commentRepo := repository.NewCommentRepository(db)             // Phase 5で追加
 	assignmentRepo := repository.NewTodoAssignmentRepository(db)   // Phase 5で追加
+	refreshTokenRepo := repository.NewPostgresRefreshTokenRepository(db) // Phase 6で追加
 
 	// Service層
-	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
+	authService := service.NewAuthService(userRepo, refreshTokenRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
 	adminService := service.NewAdminService(userRepo)
 	categoryService := service.NewCategoryService(categoryRepo)                            // Phase 2で追加
@@ -67,9 +68,10 @@ func main() {
 	projectHandler := handler.NewProjectHandler(projectService)                // Phase 5で追加
 	commentHandler := handler.NewCommentHandler(commentService)                // Phase 5で追加
 	assignmentHandler := handler.NewTodoAssignmentHandler(assignmentService)   // Phase 5で追加
+	healthHandler := handler.NewHealthHandler(db)                              // Phase 6で追加
 
 	// ルーターの設定
-	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler, reminderHandler, projectHandler, commentHandler, assignmentHandler)
+	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler, reminderHandler, projectHandler, commentHandler, assignmentHandler, healthHandler)
 
 	// バックグラウンドワーカーのコンテキスト
 	workerCtx, workerCancel := context.WithCancel(context.Background())
@@ -142,6 +144,7 @@ func setupRouter(
 	projectHandler *handler.ProjectHandler,           // Phase 5で追加
 	commentHandler *handler.CommentHandler,           // Phase 5で追加
 	assignmentHandler *handler.TodoAssignmentHandler, // Phase 5で追加
+	healthHandler *handler.HealthHandler,             // Phase 6で追加
 ) *gin.Engine {
 	router := gin.New()
 
@@ -170,6 +173,8 @@ func setupRouter(
 	router.Use(gin.Recovery())                        // panicからの回復
 	router.Use(middleware.RequestIDMiddleware())      // リクエストIDの生成
 	router.Use(gin.LoggerWithFormatter(logFormatter)) // ログ出力
+	router.Use(middleware.RateLimiterMiddleware(100))        // Phase 6で追加: レート制限（100req/min）
+	router.Use(middleware.SecurityHeadersMiddleware())       // Phase 6で追加: セキュリティヘッダー
 
 	// ヘルスチェック
 	router.GET("/ping", func(c *gin.Context) {
@@ -177,10 +182,13 @@ func setupRouter(
 			"message": "pong",
 		})
 	})
+	router.GET("/health", healthHandler.HealthCheck) // Phase 6で追加: 詳細なヘルスチェック
 
 	// 認証エンドポイント
 	router.POST("/signup", handler.ErrorHandler(userHandler.Signup))
 	router.POST("/login", handler.ErrorHandler(userHandler.Login))
+	router.POST("/api/v1/auth/refresh", handler.ErrorHandler(userHandler.RefreshToken))         // Phase 6で追加
+	router.POST("/api/v1/auth/revoke", handler.ErrorHandler(userHandler.RevokeRefreshToken))    // Phase 6で追加
 
 	// 認証が必要なエンドポイント
 	v1 := router.Group("/api/v1")

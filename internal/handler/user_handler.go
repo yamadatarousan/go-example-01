@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"gin-quickstart/internal/domain"
@@ -48,11 +49,72 @@ func (h *UserHandler) Login(c *gin.Context) error {
 		return err
 	}
 
+	// アクセストークンの生成
 	token, err := h.authService.Login(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// トークンからユーザーIDを取得
+	claims, err := h.authService.ParseToken(token)
+	if err != nil {
+		return err
+	}
+
+	// リフレッシュトークンの生成
+	var userID int
+	if _, err := fmt.Sscanf(claims.Subject, "%d", &userID); err != nil {
+		return err
+	}
+	refreshToken, err := h.authService.GenerateRefreshToken(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  token,
+		"refresh_token": refreshToken,
+	})
+	return nil
+}
+
+// RefreshToken はリフレッシュトークンを使って新しいアクセストークンを取得
+func (h *UserHandler) RefreshToken(c *gin.Context) error {
+	var input struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
+
+	// 新しいアクセストークンを生成
+	newAccessToken, err := h.authService.RefreshAccessToken(c.Request.Context(), input.RefreshToken)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": newAccessToken,
+	})
+	return nil
+}
+
+// RevokeRefreshToken はリフレッシュトークンを無効化（ログアウト）
+func (h *UserHandler) RevokeRefreshToken(c *gin.Context) error {
+	var input struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		return err
+	}
+
+	err := h.authService.RevokeRefreshToken(c.Request.Context(), input.RefreshToken)
+	if err != nil {
+		return err
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Refresh token revoked successfully",
+	})
 	return nil
 }

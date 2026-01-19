@@ -217,6 +217,7 @@ type TodoRepository interface {
 type UserRepository interface {
 	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
 	FindUserByEmail(ctx context.Context, email string) (domain.User, error)
+	FindUserByID(ctx context.Context, userID int) (domain.User, error)
 	FindAllUsers(ctx context.Context) ([]domain.User, error)
 }
 
