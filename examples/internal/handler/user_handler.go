@@ -63,7 +63,9 @@ func (h *UserHandler) Login(c *gin.Context) error {
 
 	// リフレッシュトークンの生成
 	userID := 0
-	_, _ = fmt.Sscanf(claims.Subject, "%d", &userID)
+	if _, err := fmt.Sscanf(claims.Subject, "%d", &userID); err != nil || userID == 0 {
+		return fmt.Errorf("invalid user ID in token: %w", err)
+	}
 	refreshToken, err := h.authService.GenerateRefreshToken(c.Request.Context(), userID)
 	if err != nil {
 		return err
