@@ -317,3 +317,17 @@ type TodoAssignmentRepository interface {
 	UnassignUser(ctx context.Context, todoID, userID, requesterID int) error
 	GetAssignments(ctx context.Context, todoID, requesterID int) ([]domain.TodoAssignment, error)
 }
+
+// RefreshTokenRepository はリフレッシュトークンのデータアクセス層インターフェース
+//
+// このインターフェースは、Service層とRepository層の境界を定義します。
+// - Service層はこのインターフェースに依存する
+// - Repository層（PostgresRefreshTokenRepository）はこのインターフェースを実装する
+//
+// Phase 6で追加: セキュリティ強化のため、リフレッシュトークンの管理機能を提供
+type RefreshTokenRepository interface {
+	CreateRefreshToken(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error)
+	FindRefreshTokenByToken(ctx context.Context, token string) (domain.RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, token string) error
+	DeleteExpiredTokens(ctx context.Context) error
+}

@@ -155,7 +155,7 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 	projectRepo := repository.NewProjectRepository(dbConn)
 	commentRepo := repository.NewCommentRepository(dbConn)
 	assignmentRepo := repository.NewTodoAssignmentRepository(dbConn)
-	refreshTokenRepo := repository.NewPostgresRefreshTokenRepository(dbConn)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(dbConn)
 
 	authService := service.NewAuthService(userRepo, refreshTokenRepo, cfg.JWT.Secret)
 	todoService := service.NewTodoService(todoRepo)
