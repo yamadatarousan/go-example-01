@@ -54,8 +54,19 @@ func getProjectRoot() string {
 	return ""
 }
 
+// getEnvOrDefault は環境変数を取得し、設定されていない場合はデフォルト値を返します。
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 // TestMainは、パッケージ内のテストが実行される前に一度だけ呼ばれる特別な関数です。
 func TestMain(m *testing.M) {
+	// CI環境かどうかを判定
+	isCI := os.Getenv("CI") == "true"
+
 	// プロジェクトルートを取得
 	// ★ これにより、examples/cmd/api でもcmd/api でも同じコードで動作します
 	projectRoot := getProjectRoot()
@@ -64,26 +75,40 @@ func TestMain(m *testing.M) {
 	seedDataPath := filepath.Join(projectRoot, "testdata", "seed.sql")
 
 	// --- セットアップ ---
-	log.Println("Spinning up test database...")
-	// --waitフラグでhealthcheckが通るまで待機
-	// ★ プロジェクトルート直下のdocker-compose.test.ymlを参照（常に同じファイルを使用）
-	cmd := exec.Command("docker-compose", "-f", dockerComposePath, "up", "-d", "--wait")
-	if err := cmd.Run(); err != nil {
-		log.Fatalf("Could not start test database: %v", err)
+	if !isCI {
+		// ローカル環境: docker-compose を起動
+		log.Println("Spinning up test database...")
+		// --waitフラグでhealthcheckが通るまで待機
+		// ★ プロジェクトルート直下のdocker-compose.test.ymlを参照（常に同じファイルを使用）
+		cmd := exec.Command("docker-compose", "-f", dockerComposePath, "up", "-d", "--wait")
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("Could not start test database: %v", err)
+		}
+
+		// deferでテスト終了時に必ずDBコンテナとボリュームを破棄する
+		defer func() {
+			log.Println("Tearing down test database and volumes...")
+			cmd := exec.Command("docker-compose", "-f", dockerComposePath, "down", "-v")
+			if err := cmd.Run(); err != nil {
+				log.Printf("Could not stop test database: %v", err)
+			}
+		}()
+	} else {
+		log.Println("CI environment detected, skipping docker-compose setup...")
 	}
 
-	// deferでテスト終了時に必ずDBコンテナとボリュームを破棄する
-	defer func() {
-		log.Println("Tearing down test database and volumes...")
-		cmd := exec.Command("docker-compose", "-f", dockerComposePath, "down", "-v")
-		if err := cmd.Run(); err != nil {
-			log.Printf("Could not stop test database: %v", err)
-		}
-	}()
+	// DB接続情報を環境変数またはデフォルト値から取得
+	dbHost := getEnvOrDefault("DB_HOST", "localhost")
+	dbPort := getEnvOrDefault("DB_PORT", "5434")
+	dbUser := getEnvOrDefault("DB_USER", "user")
+	dbPassword := getEnvOrDefault("DB_PASSWORD", "password")
+	dbName := getEnvOrDefault("DB_NAME", "todo_test_db")
 
 	// テスト用DBへの接続
-	dsnForGo := "host=localhost user=user password=password dbname=todo_test_db port=5434 sslmode=disable"
-	dsnForMigrate := "postgres://user:password@localhost:5434/todo_test_db?sslmode=disable"
+	dsnForGo := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		dbHost, dbUser, dbPassword, dbName, dbPort)
+	dsnForMigrate := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	var err error
 	// DBが完全に準備が整うまでリトライ
@@ -101,26 +126,31 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to test database after retries: %v", err)
 	}
 
-	// マイグレーションの実行
-	log.Println("Running migrations on test database...")
-	// まず、既存のマイグレーションをすべてダウンさせ、スキーマをクリーンな状態に戻す
-	// ★ プロジェクトルート直下のdb/migrationsを参照（常に同じディレクトリを使用）
-	migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "down", "-all")
-	if output, err := migrateDownCmd.CombinedOutput(); err != nil {
-		// エラーが発生しても続行（初回実行時など、ダウンするマイグレーションがない場合があるため）
-		log.Printf("Could not run migrate down (may be normal on first run): %v\nOutput: %s", err, string(output))
-	}
+	if !isCI {
+		// ローカル環境: マイグレーションとシードデータのロードを実行
+		// マイグレーションの実行
+		log.Println("Running migrations on test database...")
+		// まず、既存のマイグレーションをすべてダウンさせ、スキーマをクリーンな状態に戻す
+		// ★ プロジェクトルート直下のdb/migrationsを参照（常に同じディレクトリを使用）
+		migrateDownCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "down", "-all")
+		if output, err := migrateDownCmd.CombinedOutput(); err != nil {
+			// エラーが発生しても続行（初回実行時など、ダウンするマイグレーションがない場合があるため）
+			log.Printf("Could not run migrate down (may be normal on first run): %v\nOutput: %s", err, string(output))
+		}
 
-	// その後、すべてのマイグレーションをアップする
-	migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "up")
-	if output, err := migrateUpCmd.CombinedOutput(); err != nil {
-		log.Fatalf("Could not run migrations: %v\nOutput: %s", err, string(output))
-	}
+		// その後、すべてのマイグレーションをアップする
+		migrateUpCmd := exec.Command("migrate", "-database", dsnForMigrate, "-path", migrationsPath, "up")
+		if output, err := migrateUpCmd.CombinedOutput(); err != nil {
+			log.Fatalf("Could not run migrations: %v\nOutput: %s", err, string(output))
+		}
 
-	// シードデータのロード
-	log.Println("Loading seed data...")
-	if err := loadSeedData(testDB, seedDataPath); err != nil {
-		log.Fatalf("Could not load seed data: %v", err)
+		// シードデータのロード
+		log.Println("Loading seed data...")
+		if err := loadSeedData(testDB, seedDataPath); err != nil {
+			log.Fatalf("Could not load seed data: %v", err)
+		}
+	} else {
+		log.Println("CI environment: migrations and seed data already loaded by GitHub Actions")
 	}
 
 	// --- テストの実行 ---

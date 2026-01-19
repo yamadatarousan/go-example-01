@@ -1,0 +1,10 @@
+bin/
+*.md
+.git/
+.github/
+*.test
+coverage.out
+.env
+docker-compose*.yml
+testdata/
+examples/

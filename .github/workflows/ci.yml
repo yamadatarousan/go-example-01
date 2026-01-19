@@ -1,0 +1,124 @@
+# ============================================================================
+# GitHub Actions CI ワークフロー
+# ============================================================================
+# このファイルは、GitHub上でプッシュやプルリクエスト時に自動的に
+# テストとビルドを実行するための設定ファイルです。
+#
+# 実行タイミング:
+#   - mainブランチへのプッシュ時
+#   - mainブランチへのプルリクエスト作成/更新時
+#
+# ジョブの流れ:
+#   1. test: PostgreSQLを起動 → マイグレーション → テスト実行 → カバレッジ送信
+#   2. build: testが成功したらビルド確認（needs: testで依存関係を定義）
+# ============================================================================
+
+name: CI
+
+# ワークフローのトリガー条件
+on:
+  push:
+    branches: [main]        # mainブランチへのプッシュ時に実行
+  pull_request:
+    branches: [main]        # mainブランチへのPR時に実行
+
+jobs:
+  # ==========================================================================
+  # テストジョブ
+  # ==========================================================================
+  test:
+    runs-on: ubuntu-latest  # Ubuntu最新版のランナーを使用
+
+    # --------------------------------------------------------------------------
+    # サービスコンテナ（テスト用PostgreSQL）
+    # --------------------------------------------------------------------------
+    # GitHub Actionsの「services」機能を使うと、ジョブ実行中に
+    # 別コンテナでデータベースなどを起動できます。
+    # ローカルのdocker-compose.test.ymlと同等の役割を果たします。
+    services:
+      postgres:
+        image: postgres:15-alpine   # 軽量なAlpine版PostgreSQL 15を使用
+        env:
+          POSTGRES_USER: user           # DBユーザー名
+          POSTGRES_PASSWORD: password   # DBパスワード
+          POSTGRES_DB: todo_test_db     # テスト用DB名
+        ports:
+          - 5434:5432   # ホストの5434ポートをコンテナの5432にマッピング
+                        # （ローカル環境と同じポート番号を使用）
+        # ヘルスチェック設定
+        # PostgreSQLが完全に起動するまで待機するための設定
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # --------------------------------------------------------------------------
+    # テストの実行ステップ
+    # --------------------------------------------------------------------------
+    steps:
+      # Step 1: リポジトリのコードをチェックアウト
+      - uses: actions/checkout@v4
+
+      # Step 2: Go環境のセットアップ
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'  # go.modで指定したバージョンと合わせる
+
+      # Step 3: データベースマイグレーションの実行
+      # golang-migrateツールをインストールし、マイグレーションを適用
+      - name: Run migrations
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          migrate -path db/migrations -database "postgres://user:password@localhost:5434/todo_test_db?sslmode=disable" up
+
+      # Step 4: テスト用シードデータの投入
+      # psqlコマンドでseed.sqlを実行し、テストに必要な初期データを挿入
+      - name: Load seed data
+        run: |
+          PGPASSWORD=password psql -h localhost -p 5434 -U user -d todo_test_db -f testdata/seed.sql
+
+      # Step 5: テストの実行
+      # -v: 詳細出力
+      # -race: 競合状態の検出（並行処理のバグを検出）
+      # -coverprofile: カバレッジ情報をファイルに出力
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./cmd/api/...
+        env:
+          CI: "true"              # CI環境であることをテストコードに伝える
+                                  # これによりmain_test.goでdocker-compose起動をスキップ
+          DB_HOST: localhost      # DB接続情報（環境変数経由で設定）
+          DB_PORT: "5434"
+          DB_USER: user
+          DB_PASSWORD: password
+          DB_NAME: todo_test_db
+
+      # Step 6: カバレッジレポートのアップロード
+      # Codecovにカバレッジ情報を送信（オプション）
+      # fail_ci_if_error: false により、アップロード失敗時もCIは継続
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false  # Codecovへのアップロード失敗時もCIを失敗させない
+
+  # ==========================================================================
+  # ビルドジョブ
+  # ==========================================================================
+  # テストが成功した場合のみ実行（needs: test）
+  # 本番用バイナリが正常にビルドできることを確認
+  build:
+    runs-on: ubuntu-latest
+    needs: test  # testジョブが成功した後に実行
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      # バイナリのビルド
+      # ビルドが成功することを確認（成果物はこのジョブでは保存しない）
+      - name: Build
+        run: go build -o bin/api ./cmd/api
