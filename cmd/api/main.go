@@ -45,7 +45,7 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)             // Phase 5で追加
 	commentRepo := repository.NewCommentRepository(db)             // Phase 5で追加
 	assignmentRepo := repository.NewTodoAssignmentRepository(db)   // Phase 5で追加
-	refreshTokenRepo := repository.NewPostgresRefreshTokenRepository(db) // Phase 6で追加
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db) // Phase 6で追加
 
 	// Service層
 	authService := service.NewAuthService(userRepo, refreshTokenRepo, cfg.JWT.Secret)

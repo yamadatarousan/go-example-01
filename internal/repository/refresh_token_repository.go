@@ -4,29 +4,21 @@ import (
 	"context"
 	"database/sql"
 
-	"gin-quickstart/examples/internal/domain"
+	"gin-quickstart/internal/domain"
 )
 
-// RefreshTokenRepository はリフレッシュトークンのデータアクセス層インターフェース
-type RefreshTokenRepository interface {
-	CreateRefreshToken(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error)
-	FindRefreshTokenByToken(ctx context.Context, token string) (domain.RefreshToken, error)
-	RevokeRefreshToken(ctx context.Context, token string) error
-	DeleteExpiredTokens(ctx context.Context) error
-}
-
-// PostgresRefreshTokenRepository はRefreshTokenRepositoryのPostgreSQL実装
-type PostgresRefreshTokenRepository struct {
+// refreshTokenRepository はRefreshTokenRepositoryのPostgreSQL実装
+type refreshTokenRepository struct {
 	db *sql.DB
 }
 
-// NewPostgresRefreshTokenRepository はPostgresRefreshTokenRepositoryの新しいインスタンスを作成
-func NewPostgresRefreshTokenRepository(db *sql.DB) *PostgresRefreshTokenRepository {
-	return &PostgresRefreshTokenRepository{db: db}
+// NewRefreshTokenRepository はRefreshTokenRepositoryの新しいインスタンスを作成
+func NewRefreshTokenRepository(db *sql.DB) RefreshTokenRepository {
+	return &refreshTokenRepository{db: db}
 }
 
 // CreateRefreshToken は新しいリフレッシュトークンを作成
-func (r *PostgresRefreshTokenRepository) CreateRefreshToken(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error) {
+func (r *refreshTokenRepository) CreateRefreshToken(ctx context.Context, token domain.RefreshToken) (domain.RefreshToken, error) {
 	query := `
 		INSERT INTO refresh_tokens (token, user_id, expires_at)
 		VALUES ($1, $2, $3)
@@ -57,7 +49,7 @@ func (r *PostgresRefreshTokenRepository) CreateRefreshToken(ctx context.Context,
 }
 
 // FindRefreshTokenByToken はトークン文字列でリフレッシュトークンを検索
-func (r *PostgresRefreshTokenRepository) FindRefreshTokenByToken(ctx context.Context, token string) (domain.RefreshToken, error) {
+func (r *refreshTokenRepository) FindRefreshTokenByToken(ctx context.Context, token string) (domain.RefreshToken, error) {
 	query := `
 		SELECT id, token, user_id, expires_at, created_at, revoked
 		FROM refresh_tokens
@@ -85,7 +77,7 @@ func (r *PostgresRefreshTokenRepository) FindRefreshTokenByToken(ctx context.Con
 }
 
 // RevokeRefreshToken はリフレッシュトークンを無効化
-func (r *PostgresRefreshTokenRepository) RevokeRefreshToken(ctx context.Context, token string) error {
+func (r *refreshTokenRepository) RevokeRefreshToken(ctx context.Context, token string) error {
 	query := `
 		UPDATE refresh_tokens
 		SET revoked = TRUE
@@ -110,7 +102,7 @@ func (r *PostgresRefreshTokenRepository) RevokeRefreshToken(ctx context.Context,
 }
 
 // DeleteExpiredTokens は有効期限切れのトークンを削除
-func (r *PostgresRefreshTokenRepository) DeleteExpiredTokens(ctx context.Context) error {
+func (r *refreshTokenRepository) DeleteExpiredTokens(ctx context.Context) error {
 	query := `
 		DELETE FROM refresh_tokens
 		WHERE expires_at < NOW()
