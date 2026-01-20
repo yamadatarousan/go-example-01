@@ -960,6 +960,39 @@ export function middleware(request: NextRequest) {
 }
 ```
 
+**8.5.1 エラーハンドリング・ローディング状態の方針**
+
+本プロジェクトでは以下の統一パターンを採用する：
+
+**エラーハンドリング**
+| 種類 | 対応方法 |
+|------|----------|
+| フォームバリデーションエラー | インラインエラー表示（React Hook Form + Zod） |
+| APIエラー（サーバー側） | トースト通知（sonner ライブラリ） |
+| グローバルエラー（予期しない） | error.tsx でキャッチ |
+| 404エラー | not-found.tsx |
+
+**ローディング状態**
+| 種類 | 対応方法 |
+|------|----------|
+| ページ遷移時 | loading.tsx（Suspense fallback）+ Skeleton |
+| フォーム送信時 | ボタンdisabled + スピナー（useTransition の isPending） |
+| データ取得中（Client Component） | Skeleton またはスピナー |
+
+**Server Action の戻り値（統一フォーマット）**
+```typescript
+type ActionResult<T = void> =
+  | { success: true; data?: T }
+  | { success: false; error: string }
+```
+
+**トースト通知の使用例**
+```typescript
+import { toast } from 'sonner'
+toast.success('保存しました')
+toast.error('エラーが発生しました')
+```
+
 **8.6 レスポンシブデザイン**
 - [ ] PC対応（1920px以上）
 - [ ] タブレット対応（768px-1919px）
