@@ -752,266 +752,195 @@ jobs:
 
 ---
 
-### Phase 8: フロントエンド開発（Week 13-16）
+### Phase 8: フロントエンド開発（Week 13-22）
+
+#### 概要
+フロントエンド開発を10のサブフェーズに分割し、段階的に実装する。
+各サブフェーズは約3日〜1週間で完了する小さな単位とし、毎回「動くもの」を確認できる形で進める。
+
+#### 技術スタック
+- **言語**: TypeScript
+- **フレームワーク**: Next.js 14 (App Router)
+- **UIライブラリ**: Tailwind CSS + shadcn/ui
+- **フォーム**: React Hook Form + Zod
+- **認証**: httpOnly Cookie + JWT
+- **テスト**: Vitest + Playwright
+
+---
+
+### Phase 8.1: プロジェクト初期化（3日）
 
 #### 目標
-Webフロントエンドの実装
+Next.js プロジェクトを作成し、開発環境を整える
 
 #### タスク
-
-**8.1 技術選定**
-- **言語**: TypeScript
-  - 型安全性によるバグの早期発見
-  - IDEの強力な補完・リファクタリング支援
-  - APIレスポンスの型定義
-- **フレームワーク**: Next.js 14 (App Router)
-  - React 18+ Server Components
-  - Server Actions for mutations
-  - App Router (Pages Routerは使用しない)
-- **データ取得戦略**
-  - **Server Components**: GETリクエスト（参照系）はRSCで直接fetch
-  - **Server Actions**: POST/PUT/DELETE（更新系）はServer Actionsで実装
-  - **TanStack Query**: クライアント側の楽観的更新・リアルタイム更新のみ（補助的）
-  - **HTTPクライアント**: fetch API（Axiosは使用しない）
-- **状態管理**: Zustand
-  - 軽量でシンプル、RSCと相性が良い
-  - グローバルなUI状態（モーダル、トースト等）に使用
-- **UIライブラリ**: Tailwind CSS + shadcn/ui
-  - Tailwind CSS: ユーティリティファーストCSS
-  - shadcn/ui: 再利用可能なコンポーネント
-- **フォーム**: React Hook Form + Zod
-  - React Hook Form: パフォーマンス重視
-  - Zod: TypeScript型安全なバリデーション
-- **認証戦略**
-  - **JWT保存**: httpOnly cookie（XSS攻撃対策）
-  - **CSRF対策**: SameSite=Strict + CSRFトークン
-  - **認証チェック**: Next.js middleware
-  - **トークン更新**: リフレッシュトークン方式
-- **テスト戦略**
-  - **Server Components**: 統合テスト・E2E中心（Playwright）
-  - **Client Components**: Vitest + React Testing Library
-  - **API Routes/Server Actions**: Vitest統合テスト
-  - **E2E**: Playwright（クロスブラウザ対応）
-
-**8.2 プロジェクト構造**
-```
-frontend/
-├── src/
-│   ├── app/                  # Next.js App Router
-│   │   ├── (auth)/          # 認証関連ページ（Route Group）
-│   │   │   ├── login/
-│   │   │   └── signup/
-│   │   ├── dashboard/       # ダッシュボード（Server Component）
-│   │   ├── todos/           # TODO関連ページ（Server Component）
-│   │   ├── middleware.ts    # 認証チェック・JWT検証
-│   │   └── layout.tsx       # ルートレイアウト
-│   ├── actions/             # Server Actions（mutations）
-│   │   ├── auth.ts         # 認証関連アクション
-│   │   ├── todos.ts        # TODO CRUD
-│   │   └── projects.ts     # プロジェクト管理
-│   ├── components/          # 再利用可能なコンポーネント
-│   │   ├── ui/             # shadcn/uiコンポーネント
-│   │   ├── layouts/        # レイアウトコンポーネント
-│   │   └── features/       # 機能別コンポーネント（Client Components）
-│   ├── lib/                 # ユーティリティ・設定
-│   │   ├── api/            # fetch関数（Server Component用）
-│   │   ├── hooks/          # カスタムフック（Client Component用）
-│   │   ├── auth/           # JWT検証・CSRF対策
-│   │   └── utils/          # ヘルパー関数
-│   ├── types/               # TypeScript型定義
-│   │   ├── api.ts          # APIレスポンス型
-│   │   ├── models.ts       # ドメインモデル型
-│   │   └── index.ts
-│   └── store/               # 状態管理（Zustand、UI状態のみ）
-└── public/                  # 静的ファイル
-```
-
-**8.3 主要画面**
-- [ ] ログイン画面（Client Component: React Hook Form + Zod + Server Action）
-- [ ] サインアップ画面（Client Component: React Hook Form + Zod + Server Action）
-- [ ] ダッシュボード（Server Component: SSR統計情報表示）
-- [ ] TODO一覧（Server Component + Client Component: フィルタリング・検索）
-  - リスト表示: Server Component
-  - フィルタUI: Client Component
-  - リアルタイム更新: TanStack Query（楽観的更新）
-- [ ] TODO詳細・編集（Client Component: ドラッグ&ドロップ + Server Action）
-- [ ] プロジェクト管理（Server Component + Client Component）
-- [ ] 設定画面（Client Component: プロフィール編集 + Server Action）
-
-**8.4 型定義の実装**
-```typescript
-// types/api.ts
-export interface Todo {
-  id: number;
-  name: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'done';
-  priority: 'low' | 'medium' | 'high';
-  due_date?: string;
-  user_id: number;
-  category_id?: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  bio?: string;
-  image?: string;
-  role: 'user' | 'admin';
-  created_at: string;
-}
-
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-}
-
-export interface ApiError {
-  error: string;
-  details?: string;
-}
-```
-
-**8.5 データ取得・API通信の実装**
-- [ ] Server Components用fetch関数（JWT自動付与、Next.js middleware経由）
-- [ ] Server Actions実装（CSRF保護付き）
-- [ ] API型定義の自動生成（openapi-typescript）
-- [ ] エラーハンドリング（統一エラー処理）
-- [ ] TanStack Query設定（クライアント側の楽観的更新用、補助的）
-- [ ] httpOnly cookie認証フロー実装
-  - [ ] ログイン時のcookie設定
-  - [ ] middlewareでのJWT検証
-  - [ ] CSRF対策実装
-
-**実装パターン例:**
-
-```typescript
-// app/todos/page.tsx (Server Component)
-async function TodosPage() {
-  // Server Componentで直接fetch（JWT自動付与）
-  const todos = await fetch('http://backend/api/v1/todos', {
-    cache: 'no-store', // リアルタイムデータの場合
-  }).then(r => r.json())
-
-  return <TodoList todos={todos} />
-}
-
-// actions/todos.ts (Server Action)
-'use server'
-import { revalidatePath } from 'next/cache'
-
-export async function createTodo(formData: FormData) {
-  const csrfToken = formData.get('csrfToken')
-  // CSRF検証
-
-  const response = await fetch('http://backend/api/v1/todos', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: formData.get('name'),
-      description: formData.get('description'),
-    }),
-  })
-
-  if (!response.ok) throw new Error('Failed to create todo')
-
-  revalidatePath('/todos') // キャッシュ再検証
-  return response.json()
-}
-
-// components/TodoForm.tsx (Client Component)
-'use client'
-import { createTodo } from '@/actions/todos'
-import { useTransition } from 'react'
-
-export function TodoForm() {
-  const [isPending, startTransition] = useTransition()
-
-  async function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      await createTodo(formData)
-    })
-  }
-
-  return (
-    <form action={handleSubmit}>
-      {/* フォームフィールド */}
-      <button disabled={isPending}>Create</button>
-    </form>
-  )
-}
-
-// middleware.ts (JWT検証)
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')
-
-  if (!token && !request.nextUrl.pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  // JWT検証ロジック
-  return NextResponse.next()
-}
-```
-
-**8.5.1 エラーハンドリング・ローディング状態の方針**
-
-本プロジェクトでは以下の統一パターンを採用する：
-
-**エラーハンドリング**
-| 種類 | 対応方法 |
-|------|----------|
-| フォームバリデーションエラー | インラインエラー表示（React Hook Form + Zod） |
-| APIエラー（サーバー側） | トースト通知（sonner ライブラリ） |
-| グローバルエラー（予期しない） | error.tsx でキャッチ |
-| 404エラー | not-found.tsx |
-
-**ローディング状態**
-| 種類 | 対応方法 |
-|------|----------|
-| ページ遷移時 | loading.tsx（Suspense fallback）+ Skeleton |
-| フォーム送信時 | ボタンdisabled + スピナー（useTransition の isPending） |
-| データ取得中（Client Component） | Skeleton またはスピナー |
-
-**Server Action の戻り値（統一フォーマット）**
-```typescript
-type ActionResult<T = void> =
-  | { success: true; data?: T }
-  | { success: false; error: string }
-```
-
-**トースト通知の使用例**
-```typescript
-import { toast } from 'sonner'
-toast.success('保存しました')
-toast.error('エラーが発生しました')
-```
-
-**8.6 レスポンシブデザイン**
-- [ ] PC対応（1920px以上）
-- [ ] タブレット対応（768px-1919px）
-- [ ] スマートフォン対応（〜767px）
-- [ ] ダークモード対応
-
-**8.7 パフォーマンス最適化**
-- [ ] コード分割（React.lazy, dynamic import）
-- [ ] 画像最適化（Next.js Image）
-- [ ] SSR/SSG活用
-- [ ] バンドルサイズ最適化
+- [ ] Next.js プロジェクト作成（create-next-app）
+- [ ] TypeScript 設定確認
+- [ ] ESLint 設定
+- [ ] Tailwind CSS 設定
+- [ ] ディレクトリ構造の作成
 
 #### 成果物
+- [ ] `npm run dev` で起動できるプロジェクト
+
+---
+
+### Phase 8.2: UIコンポーネント基盤（3日）
+
+#### 目標
+共通UIコンポーネントと型定義を整備する
+
+#### タスク
+- [ ] shadcn/ui セットアップ
+- [ ] 基本コンポーネント追加（Button, Input, Label, Card）
+- [ ] lib/utils.ts（cn関数）
+- [ ] types/index.ts（Todo, User, ApiError等）
+
+#### 成果物
+- [ ] 共通コンポーネントが使える状態
+
+---
+
+### Phase 8.3: API通信基盤（3日）
+
+#### 目標
+バックエンドとの通信基盤を整備する
+
+#### タスク
+- [ ] lib/server-api.ts（認証付きfetch関数）
+- [ ] fetchWithAuth / fetchWithoutAuth
+- [ ] ActionResult型の定義
+- [ ] モックデータ切り替え機能
+
+#### 成果物
+- [ ] Server ActionsからAPI呼び出しができる状態
+
+---
+
+### Phase 8.4: ログイン画面（3日）
+
+#### 目標
+ログイン画面を実装する
+
+#### タスク
+- [ ] app/login/page.tsx
+- [ ] ログインフォーム（React Hook Form + Zod）
+- [ ] app/login/actions.ts（Server Action）
+- [ ] Cookie へのJWT保存
+
+#### 成果物
+- [ ] ログインフォームが表示され、送信できる
+
+---
+
+### Phase 8.5: サインアップ・認証フロー（3日）
+
+#### 目標
+サインアップとルート保護を実装する
+
+#### タスク
+- [ ] app/signup/page.tsx
+- [ ] サインアップフォーム
+- [ ] app/signup/actions.ts
+- [ ] middleware.ts（ルート保護）
+- [ ] 認証後のリダイレクト処理
+
+#### 成果物
+- [ ] サインアップ → ログイン → TODO一覧へのフローが動く
+
+---
+
+### Phase 8.6: TODO一覧表示（3日）
+
+#### 目標
+TODO一覧を表示する
+
+#### タスク
+- [ ] app/todos/page.tsx（Server Component）
+- [ ] TODOアイテムコンポーネント
+- [ ] ヘッダーコンポーネント
+- [ ] app/todos/actions.ts（取得用）
+
+#### 成果物
+- [ ] バックエンドからTODOを取得して一覧表示できる
+
+---
+
+### Phase 8.7: TODO CRUD（3日）
+
+#### 目標
+TODOの追加・更新・削除を実装する
+
+#### タスク
+- [ ] TODO追加フォーム
+- [ ] TODO更新（完了チェック、タイトル編集）
+- [ ] TODO削除
+- [ ] Server Actions（create, update, delete）
+
+#### 成果物
+- [ ] TODOのCRUD操作が全て動く
+
+---
+
+### Phase 8.8: エラー・ローディング状態（3日）
+
+#### 目標
+エラーハンドリングとローディング状態を統一する
+
+#### タスク
+- [ ] app/error.tsx（グローバルエラー）
+- [ ] app/not-found.tsx（404）
+- [ ] app/loading.tsx
+- [ ] components/ui/skeleton.tsx
+- [ ] sonner セットアップ（トースト通知）
+- [ ] layout.tsx に Toaster 追加
+
+#### 成果物
+- [ ] エラー・ローディング状態が統一パターンで表示される
+
+---
+
+### Phase 8.9: ダッシュボード（3日）
+
+#### 目標
+統計情報を表示するダッシュボードを実装する
+
+#### タスク
+- [ ] app/dashboard/page.tsx
+- [ ] 統計カードコンポーネント
+- [ ] 今日のTODO表示
+- [ ] 期限切れTODO表示
+- [ ] app/dashboard/actions.ts
+
+#### 成果物
+- [ ] ダッシュボードに統計情報が表示される
+
+---
+
+### Phase 8.10: プロジェクト・設定・仕上げ（1週間）
+
+#### 目標
+残りの画面を実装し、全体を仕上げる
+
+#### タスク
+- [ ] プロジェクト一覧・詳細画面
+- [ ] プロジェクト作成・編集・削除
+- [ ] メンバー管理
+- [ ] 設定画面（プロフィール表示）
+- [ ] ログアウト機能
+- [ ] 共通ナビゲーション整備
+- [ ] レスポンシブ対応（PC、タブレット、スマートフォン）
+
+#### 成果物
+- [ ] 全画面が揃い、レスポンシブ対応が完了
+
+---
+
+#### Phase 8 全体の成果物
 - [ ] TypeScriptベースのフロントエンドアプリケーション
 - [ ] 型安全なAPI通信層
-- [ ] 再利用可能なコンポーネントライブラリ
-- [ ] ユニットテスト
-- [ ] E2Eテスト（Playwright）
-- [ ] Storybookコンポーネントカタログ（オプション）
+- [ ] 再利用可能なコンポーネント
+- [ ] 統一されたエラーハンドリング・ローディング状態
 
 ---
 
