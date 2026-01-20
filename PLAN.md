@@ -789,6 +789,7 @@ AIは`examples/frontend/`のみを編集する。写経用の`frontend/`は以�
 
 **1. プロジェクト作成**
 ```bash
+# プロジェクトルート（go-example-01/）で実行
 npx create-next-app@latest frontend
 ```
 
