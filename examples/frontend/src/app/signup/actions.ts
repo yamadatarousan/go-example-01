@@ -4,14 +4,22 @@
 'use server'
 
 import { cookies } from 'next/headers'
-
-// API のベース URL
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080'
+import { fetchWithoutAuth } from '@/lib/server-api'
 
 // サインアップリクエストの型
 interface SignupRequest {
   email: string
   password: string
+}
+
+// サインアップレスポンスの型
+interface SignupResponse {
+  token: string
+  user: {
+    id: number
+    email: string
+    role: string
+  }
 }
 
 // Server Action の戻り値の型
@@ -25,48 +33,33 @@ interface ActionResult {
  * バックエンド API を呼び出し、JWT トークンを httpOnly Cookie に保存する
  */
 export async function signupAction(data: SignupRequest): Promise<ActionResult> {
-  try {
-    // バックエンド API にサインアップリクエストを送信
-    const response = await fetch(`${API_BASE_URL}/api/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
+  // 注意: APIパスは タスク2 で /signup に修正予定
+  const result = await fetchWithoutAuth<SignupResponse>('/api/signup', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 
-    // エラーレスポンスの処理
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-
-      // よくあるエラーメッセージの日本語化
-      if (errorData.error?.includes('already exists')) {
-        return { error: 'このメールアドレスは既に登録されています' }
-      }
-
-      return {
-        error: errorData.error || 'サインアップに失敗しました',
-      }
+  if (result.error) {
+    // よくあるエラーメッセージの日本語化
+    if (result.error.includes('already exists')) {
+      return { error: 'このメールアドレスは既に登録されています' }
     }
-
-    // 成功時: レスポンスから JWT トークンを取得
-    const result = await response.json()
-
-    // JWT トークンを httpOnly Cookie に保存
-    const cookieStore = await cookies()
-    cookieStore.set('token', result.token, {
-      httpOnly: true,        // JavaScript からアクセス不可
-      secure: process.env.NODE_ENV === 'production', // HTTPS のみ（本番環境）
-      sameSite: 'lax',       // CSRF 対策
-      maxAge: 60 * 60 * 24,  // 24 時間
-      path: '/',             // 全パスで有効
-    })
-
-    return { success: true }
-  } catch (error) {
-    console.error('Signup error:', error)
-    return {
-      error: 'サーバーとの通信に失敗しました',
-    }
+    return { error: result.error }
   }
+
+  if (!result.data?.token) {
+    return { error: 'トークンが取得できませんでした' }
+  }
+
+  // JWT トークンを httpOnly Cookie に保存
+  const cookieStore = await cookies()
+  cookieStore.set('token', result.data.token, {
+    httpOnly: true,        // JavaScript からアクセス不可
+    secure: process.env.NODE_ENV === 'production', // HTTPS のみ（本番環境）
+    sameSite: 'lax',       // CSRF 対策
+    maxAge: 60 * 60 * 24,  // 24 時間
+    path: '/',             // 全パスで有効
+  })
+
+  return { success: true }
 }
