@@ -766,6 +766,80 @@ jobs:
 - **認証**: httpOnly Cookie + JWT
 - **テスト**: Vitest + Playwright
 
+#### フロントエンドアーキテクチャ
+
+##### ディレクトリ構造の方針
+
+Next.jsは「非固定的」（unopinionated）なフレームワークであり、`app/`内のルーティング規約以外は公式の「正解」がない。本プロジェクトでは**戦略A（app外配置）**を採用する。
+
+**Next.js公式が紹介する3つの戦略:**
+
+| 戦略 | 構造 | 特徴 |
+|------|------|------|
+| **A** | `app/`外に`components/`, `lib/`, `types/` | ルーティングとロジックの分離 |
+| **B** | `app/`内に`_components/`, `_lib/` | 関連ファイルが近い |
+| **C** | 機能ごとに分割 + ルートグループ`()` | 大規模向け、スケーラブル |
+
+**採用理由:**
+- TODOアプリの規模では戦略Aで十分
+- ルーティング（`app/`）とビジネスロジック（`lib/`, `components/`）が明確に分離される
+- shadcn/uiのデフォルト構成と一致
+
+**戦略Aの背景:**
+- Next.js 13以前は`pages/`がルーティング専用で、`pages/`外に`components/`等を置くのが自然だった
+- App Router導入後もその慣習が継続している
+- `app/`内には特殊ファイル規約があり、ビジネスロジックを混在させると分かりにくくなる
+
+**設計思想の違い:**
+
+| アプローチ | 戦略 | 考え方 |
+|-----------|------|--------|
+| **レイヤー分離** | A | 「種類」で分ける（全コンポーネント、全型定義をまとめる） |
+| **コロケーション** | B, C | 「機能」で分ける（関連ファイルを近くに置く） |
+
+##### プロジェクト構造
+
+```
+frontend/src/
+├── app/                    # ルーティング専用（Next.js規約）
+│   ├── layout.tsx          # ルートレイアウト
+│   ├── page.tsx            # トップページ
+│   ├── globals.css         # グローバルスタイル
+│   ├── loading.tsx         # ローディングUI
+│   ├── error.tsx           # エラーUI
+│   ├── not-found.tsx       # 404 UI
+│   ├── login/              # /login
+│   ├── signup/             # /signup
+│   ├── todos/              # /todos
+│   └── ...
+├── components/             # 共有コンポーネント
+│   └── ui/                 # shadcn/uiコンポーネント
+├── lib/                    # ユーティリティ関数
+│   └── utils.ts            # cn関数等
+└── types/                  # TypeScript型定義
+    └── index.ts            # 共通型
+```
+
+##### Next.js App Router の規約
+
+| ファイル | 用途 |
+|---------|------|
+| `layout.tsx` | 共有レイアウト（ヘッダー、ナビ等） |
+| `page.tsx` | ページ本体（これがあるとルートが公開される） |
+| `loading.tsx` | ローディング状態（React Suspense） |
+| `error.tsx` | エラーバウンダリ |
+| `not-found.tsx` | 404ページ |
+| `route.ts` | APIエンドポイント（本プロジェクトでは使用しない） |
+
+##### 特殊なフォルダ命名規則
+
+| 記法 | 用途 | 例 |
+|------|------|-----|
+| `_folder` | プライベートフォルダ（ルーティング対象外） | `_components/` |
+| `(folder)` | ルートグループ（URLに影響しない） | `(auth)/login` → `/login` |
+| `[folder]` | 動的ルート | `[id]` → `/todos/123` |
+| `[[...folder]]` | オプショナルキャッチオール | `[[...slug]]` |
+
 ---
 
 ### Phase 8.1: プロジェクト初期化（3日）
@@ -830,6 +904,25 @@ cd frontend && npm run dev
 
 #### 成果物
 - [ ] 共通コンポーネントが使える状態
+
+#### 写経用ディレクトリ（frontend/）のセットアップ手順
+
+**1. shadcn/ui 初期化**
+```bash
+cd frontend
+npx shadcn@latest init
+```
+
+質問への回答:
+```
+✔ Which color would you like to use as the base color? › Neutral
+✔ Would you like to use CSS variables for theming? › Yes
+```
+
+**2. 基本コンポーネント追加**
+```bash
+npx shadcn@latest add button input label card
+```
 
 ---
 
