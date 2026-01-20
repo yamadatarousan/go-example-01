@@ -783,6 +783,36 @@ Next.js プロジェクトを作成し、開発環境を整える
 #### 成果物
 - [ ] `npm run dev` で起動できるプロジェクト
 
+#### 写経用ディレクトリ（frontend/）の初期化手順
+
+AIは`examples/frontend/`のみを編集する。写経用の`frontend/`は以下の手順で初期化する。
+
+**1. プロジェクト作成**
+```bash
+npx create-next-app@latest frontend
+```
+
+create-next-appの質問への回答:
+```
+✔ Would you like to use TypeScript? … Yes
+✔ Would you like to use ESLint? … Yes
+✔ Would you like to use Tailwind CSS? … Yes
+✔ Would you like your code inside a `src/` directory? … Yes
+✔ Would you like to use App Router? (recommended) … Yes
+✔ Would you like to use Turbopack for `next dev`? … No
+✔ Would you like to customize the import alias (@/* by default)? … No
+```
+
+**2. ディレクトリ構造の作成**
+```bash
+mkdir -p frontend/src/{components,lib,types}
+```
+
+**3. 動作確認**
+```bash
+cd frontend && npm run dev
+```
+
 ---
 
 ### Phase 8.2: UIコンポーネント基盤（3日）
