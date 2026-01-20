@@ -61,7 +61,7 @@ async function fetchApi<T>(
 
 /** ログイン */
 export async function login(data: LoginRequest): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/api/login', {
+  return fetchApi<AuthResponse>('/login', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -69,16 +69,9 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 
 /** サインアップ */
 export async function signup(data: SignupRequest): Promise<AuthResponse> {
-  return fetchApi<AuthResponse>('/api/signup', {
+  return fetchApi<AuthResponse>('/signup', {
     method: 'POST',
     body: JSON.stringify(data),
-  })
-}
-
-/** ログアウト */
-export async function logout(): Promise<void> {
-  return fetchApi<void>('/api/logout', {
-    method: 'POST',
   })
 }
 
@@ -88,7 +81,7 @@ export async function logout(): Promise<void> {
 
 /** TODO 一覧取得 */
 export async function getTodos(): Promise<Todo[]> {
-  const response = await fetchApi<TodosResponse>('/api/todos', {
+  const response = await fetchApi<TodosResponse>('/api/v1/todos', {
     method: 'GET',
   })
   return response.todos
@@ -96,7 +89,7 @@ export async function getTodos(): Promise<Todo[]> {
 
 /** TODO 作成 */
 export async function createTodo(data: CreateTodoRequest): Promise<Todo> {
-  return fetchApi<Todo>('/api/todos', {
+  return fetchApi<Todo>('/api/v1/todos', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -107,7 +100,7 @@ export async function updateTodo(
   id: number,
   data: UpdateTodoRequest
 ): Promise<Todo> {
-  return fetchApi<Todo>(`/api/todos/${id}`, {
+  return fetchApi<Todo>(`/api/v1/todos/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
@@ -115,7 +108,7 @@ export async function updateTodo(
 
 /** TODO 削除 */
 export async function deleteTodo(id: number): Promise<void> {
-  return fetchApi<void>(`/api/todos/${id}`, {
+  return fetchApi<void>(`/api/v1/todos/${id}`, {
     method: 'DELETE',
   })
 }
@@ -129,6 +122,6 @@ export async function deleteTodo(id: number): Promise<void> {
  * リアルタイム通知を受信するための EventSource を返す
  */
 export function connectSSE(): EventSource {
-  const url = `${API_BASE_URL}/api/events`
+  const url = `${API_BASE_URL}/api/v1/notifications/stream`
   return new EventSource(url, { withCredentials: true })
 }

@@ -33,8 +33,7 @@ interface ActionResult {
  * バックエンド API を呼び出し、JWT トークンを httpOnly Cookie に保存する
  */
 export async function loginAction(data: LoginRequest): Promise<ActionResult> {
-  // 注意: APIパスは タスク2 で /login に修正予定
-  const result = await fetchWithoutAuth<LoginResponse>('/api/login', {
+  const result = await fetchWithoutAuth<LoginResponse>('/login', {
     method: 'POST',
     body: JSON.stringify(data),
   })

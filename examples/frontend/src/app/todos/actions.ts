@@ -22,8 +22,7 @@ interface DeleteActionResult {
  * TODO を作成する Server Action
  */
 export async function createTodoAction(title: string): Promise<TodoActionResult> {
-  // 注意: APIパスは タスク2 で /api/v1/todos に修正予定
-  const result = await fetchWithAuth<Todo>('/api/todos', {
+  const result = await fetchWithAuth<Todo>('/api/v1/todos', {
     method: 'POST',
     body: JSON.stringify({ title }),
   })
@@ -42,8 +41,7 @@ export async function updateTodoAction(
   id: number,
   updates: { title?: string; completed?: boolean }
 ): Promise<TodoActionResult> {
-  // 注意: APIパスは タスク2 で /api/v1/todos に修正予定
-  const result = await fetchWithAuth<Todo>(`/api/todos/${id}`, {
+  const result = await fetchWithAuth<Todo>(`/api/v1/todos/${id}`, {
     method: 'PUT',
     body: JSON.stringify(updates),
   })
@@ -59,8 +57,7 @@ export async function updateTodoAction(
  * TODO を削除する Server Action
  */
 export async function deleteTodoAction(id: number): Promise<DeleteActionResult> {
-  // 注意: APIパスは タスク2 で /api/v1/todos に修正予定
-  const result = await fetchWithAuth<void>(`/api/todos/${id}`, {
+  const result = await fetchWithAuth<void>(`/api/v1/todos/${id}`, {
     method: 'DELETE',
   })
 
