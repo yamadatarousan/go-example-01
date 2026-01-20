@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // 認証が必要なパス（これらのパスにアクセスするにはログインが必要）
-const protectedPaths = ['/todos']
+const protectedPaths = ['/todos', '/dashboard', '/projects', '/settings']
 
 // 認証済みユーザーがアクセスすべきでないパス（ログイン後はリダイレクト）
 const authPaths = ['/login', '/signup']
