@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 // Inter フォントの設定
@@ -25,6 +26,8 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* children には各ページのコンテンツが入る */}
         {children}
+        {/* トースト通知用コンポーネント */}
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   )
