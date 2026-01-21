@@ -35,7 +35,7 @@
 # 3. テスト終了後、コンテナとボリュームを削除（-v: ボリュームも削除）
 test:
 	docker-compose -f docker-compose.test.yml up -d --wait
-	go test -v -race ./cmd/api/...
+	go test -v -race ./backend/cmd/api/...
 	docker-compose -f docker-compose.test.yml down -v
 
 # ============================================================================
@@ -46,13 +46,13 @@ test:
 # -o bin/api: 出力先を bin/api に指定
 # ./cmd/api:  ビルド対象のパッケージ（main関数があるディレクトリ）
 build:
-	go build -o bin/api ./cmd/api
+	go build -o bin/api ./backend/cmd/api
 
 # 開発用: アプリケーションの起動
 # go run はビルドと実行を一度に行う（開発時に便利）
 # 本番では build で作成したバイナリを使う
 run:
-	go run ./cmd/api
+	go run ./backend/cmd/api
 
 # ============================================================================
 # コード品質

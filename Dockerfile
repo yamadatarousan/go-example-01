@@ -48,7 +48,7 @@ COPY . .
 #   -s: シンボルテーブルを削除
 #   -w: DWARFデバッグ情報を削除
 # -o /api:       出力先を /api に指定
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /api ./backend/cmd/api
 
 # ============================================================================
 # ステージ2: 実行ステージ

@@ -83,7 +83,7 @@ jobs:
       # -race: 競合状態の検出（並行処理のバグを検出）
       # -coverprofile: カバレッジ情報をファイルに出力
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out ./cmd/api/...
+        run: go test -v -race -coverprofile=coverage.out ./backend/cmd/api/...
         env:
           CI: "true"              # CI環境であることをテストコードに伝える
                                   # これによりmain_test.goでdocker-compose起動をスキップ
@@ -122,4 +122,4 @@ jobs:
       # バイナリのビルド
       # ビルドが成功することを確認（成果物はこのジョブでは保存しない）
       - name: Build
-        run: go build -o bin/api ./cmd/api
+        run: go build -o bin/api ./backend/cmd/api
