@@ -946,6 +946,15 @@ npx shadcn@latest add button input label card
 #### 成果物
 - [ ] Server ActionsからAPI呼び出しができる状態
 
+#### 写経用ディレクトリ（frontend/）のセットアップ手順
+
+**環境変数ファイルの作成:**
+```bash
+# frontend/.env.local を作成
+echo 'API_BASE_URL=http://localhost:8080' > frontend/.env.local
+echo 'USE_MOCK=false' >> frontend/.env.local
+```
+
 ---
 
 ### Phase 8.4: ログイン画面（3日）
