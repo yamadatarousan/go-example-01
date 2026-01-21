@@ -28,6 +28,12 @@
   - 例: `examples/internal/handler/foo.go` を作成 → `internal/handler/foo.go`（空）も作成
   - 空ファイルにはコメントを入れず、完全に空の状態にする
   - 目的: ユーザーが写経すべきファイル構造を明確にするため
+  - **⚠️ 例外: ツール生成ファイルはプレースホルダー不要**:
+    - `create-next-app`が生成するファイル（`layout.tsx`, `page.tsx`等の初期ファイル）
+    - `npx shadcn@latest add`が生成するファイル（`components/ui/*`）
+    - これらはユーザーが同じコマンドを実行すれば生成されるため、空ファイルは不要
+    - 代わりにPLAN.mdに実行すべきコマンドを記載する
+  - **プレースホルダーを作成するもの**: AIが手書きするファイル（`types/index.ts`, `lib/server-api.ts`等）
 
 ## 📌 現状分析
 
