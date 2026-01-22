@@ -854,14 +854,14 @@ frontend/src/
 Next.js プロジェクトを作成し、開発環境を整える
 
 #### タスク
-- [ ] Next.js プロジェクト作成（create-next-app）
-- [ ] TypeScript 設定確認
-- [ ] ESLint 設定
-- [ ] Tailwind CSS 設定
-- [ ] ディレクトリ構造の作成
+- [x] Next.js プロジェクト作成（create-next-app）
+- [x] TypeScript 設定確認
+- [x] ESLint 設定
+- [x] Tailwind CSS 設定
+- [x] ディレクトリ構造の作成
 
 #### 成果物
-- [ ] `npm run dev` で起動できるプロジェクト
+- [x] `npm run dev` で起動できるプロジェクト
 
 #### 写経用ディレクトリ（frontend/）の初期化手順
 
@@ -903,13 +903,13 @@ cd frontend && npm run dev
 共通UIコンポーネントと型定義を整備する
 
 #### タスク
-- [ ] shadcn/ui セットアップ
-- [ ] 基本コンポーネント追加（Button, Input, Label, Card）
-- [ ] lib/utils.ts（cn関数）
-- [ ] types/index.ts（Todo, User, ApiError等）
+- [x] shadcn/ui セットアップ
+- [x] 基本コンポーネント追加（Button, Input, Label, Card）
+- [x] lib/utils.ts（cn関数）
+- [x] types/index.ts（Todo, User, ApiError等）
 
 #### 成果物
-- [ ] 共通コンポーネントが使える状態
+- [x] 共通コンポーネントが使える状態
 
 #### 写経用ディレクトリ（frontend/）のセットアップ手順
 
@@ -938,13 +938,13 @@ npx shadcn@latest add button input label card
 バックエンドとの通信基盤を整備する
 
 #### タスク
-- [ ] lib/server-api.ts（認証付きfetch関数）
-- [ ] fetchWithAuth / fetchWithoutAuth
-- [ ] ActionResult型の定義
-- [ ] モックデータ切り替え機能
+- [x] lib/server-api.ts（認証付きfetch関数）
+- [x] fetchWithAuth / fetchWithoutAuth
+- [x] ActionResult型の定義
+- [x] モックデータ切り替え機能
 
 #### 成果物
-- [ ] Server ActionsからAPI呼び出しができる状態
+- [x] Server ActionsからAPI呼び出しができる状態
 
 #### 写経用ディレクトリ（frontend/）のセットアップ手順
 
