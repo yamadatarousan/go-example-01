@@ -970,6 +970,14 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 #### 成果物
 - [ ] ログインフォームが表示され、送信できる
 
+#### 写経用ディレクトリ（frontend/）のセットアップ手順
+
+**パッケージのインストール:**
+```bash
+cd frontend
+npm install react-hook-form zod @hookform/resolvers
+```
+
 ---
 
 ### Phase 8.5: サインアップ・認証フロー（3日）

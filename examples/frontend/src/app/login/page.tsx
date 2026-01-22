@@ -2,6 +2,7 @@
 // ユーザーがメールアドレスとパスワードでログインするためのページ
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
@@ -14,8 +15,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* ログインフォームは次のタスクで実装 */}
-          <p className="text-muted-foreground">フォームは次のタスクで実装予定</p>
+          <LoginForm />
         </CardContent>
       </Card>
     </main>
