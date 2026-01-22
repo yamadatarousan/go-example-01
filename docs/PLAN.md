@@ -962,10 +962,11 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 ログイン画面を実装する
 
 #### タスク
-- [ ] app/login/page.tsx
-- [ ] ログインフォーム（React Hook Form + Zod）
-- [ ] app/login/actions.ts（Server Action）
-- [ ] Cookie へのJWT保存
+- [x] app/login/page.tsx
+- [x] ログインフォーム（React Hook Form + Zod）
+- [x] app/login/actions.ts（Server Action）
+- [x] Cookie へのJWT保存（actions.ts内で実装）
+- [ ] login-form.tsxとServer Actionの連携
 
 #### 成果物
 - [ ] ログインフォームが表示され、送信できる
