@@ -343,12 +343,12 @@ TODOアプリとしての実用性を高める
 #### タスク
 
 **2.1 TODO機能の充実**
-- [ ] **優先度**: `priority` (high/medium/low)
-- [ ] **期限**: `due_date` (TIMESTAMPTZ)
-- [ ] **ステータス**: `status` (todo/in_progress/done)
-- [ ] **カテゴリー**: `category_id` (FK to categories)
-- [ ] **タグ機能**: `tags` (many-to-many)
-- [ ] **サブタスク**: `parent_todo_id` (自己参照)
+- [x] **優先度**: `priority` (high/medium/low)
+- [x] **期限**: `due_date` (TIMESTAMPTZ)
+- [x] **ステータス**: `status` (todo/in_progress/done)
+- [x] **カテゴリー**: `category_id` (FK to categories)
+- [x] **タグ機能**: `tags` (many-to-many)
+- [x] **サブタスク**: `parent_todo_id` (自己参照)
 
 **マイグレーション追加**
 ```sql
@@ -406,28 +406,28 @@ DELETE /api/v1/categories/:id         # カテゴリー削除
 Phase 3に進む前に、Phase 1およびPhase 2で実装された全エンドポイントが正しく動作することを確認するテストを作成します。これまでに実装された全てのエンドポイントを網羅的にテストします。
 
 **テスト対象エンドポイント**:
-- [ ] **ユーザー認証**
+- [x] **ユーザー認証**
   - POST /signup - ユーザー登録
   - POST /login - ログイン
-- [ ] **TODO基本操作**
+- [x] **TODO基本操作**
   - GET /api/v1/todos - TODO一覧取得
   - GET /api/v1/todos/:id - TODO詳細取得
   - POST /api/v1/todos - TODO作成（優先度、期限、ステータス、説明等を含む）
   - PUT /api/v1/todos/:id - TODO更新
   - DELETE /api/v1/todos/:id - TODO削除
-- [ ] **TODO拡張機能**（Phase 2で追加）
+- [x] **TODO拡張機能**（Phase 2で追加）
   - POST /api/v1/todos/:id/complete - TODO完了
   - POST /api/v1/todos/:id/reopen - TODO再開
   - GET /api/v1/todos/overdue - 期限切れTODO一覧
   - GET /api/v1/todos/today - 今日のTODO一覧
   - GET /api/v1/todos/week - 今週のTODO一覧
-- [ ] **カテゴリー機能**（Phase 2で追加）
+- [x] **カテゴリー機能**（Phase 2で追加）
   - POST /api/v1/categories - カテゴリー作成
   - GET /api/v1/categories - カテゴリー一覧取得
   - GET /api/v1/categories/:id - カテゴリー詳細取得
   - PUT /api/v1/categories/:id - カテゴリー更新
   - DELETE /api/v1/categories/:id - カテゴリー削除
-- [ ] **管理者機能**
+- [x] **管理者機能**
   - GET /api/v1/admin/users - 全ユーザー取得（管理者のみ）
 
 **テスト方針**:
@@ -692,31 +692,31 @@ DELETE /api/v1/comments/:id               # コメント削除
 #### タスク
 
 **6.1 セキュリティ強化**
-- [ ] リフレッシュトークンの実装
-- [ ] レート制限（100req/min）
-- [ ] セキュリティヘッダーの追加
-- [ ] 監査ログの拡充（全CRUD操作）
-- [ ] HTTPS強制
+- [x] リフレッシュトークンの実装
+- [x] レート制限（100req/min）
+- [x] セキュリティヘッダーの追加
+- [x] 監査ログの拡充（全CRUD操作）
+- [x] HTTPS強制
 
 **6.2 パフォーマンス最適化**
-- [ ] データベースインデックスの追加
+- [x] データベースインデックスの追加
 ```sql
 CREATE INDEX idx_todos_user_status ON todos(user_id, status);
 CREATE INDEX idx_todos_due_date ON todos(due_date) WHERE due_date IS NOT NULL;
 ```
-- [ ] N+1クエリの排除
-- [ ] Redisキャッシュの導入
-- [ ] ページネーション改善
+- [x] N+1クエリの排除
+- [x] Redisキャッシュの導入
+- [x] ページネーション改善
 
 **6.3 監視・ロギング**
-- [ ] 構造化ロギング（zap）
-- [ ] Prometheusメトリクス
-- [ ] ヘルスチェックエンドポイント
+- [x] 構造化ロギング（zap）
+- [x] Prometheusメトリクス
+- [x] ヘルスチェックエンドポイント
 
 #### 成果物
-- [ ] セキュリティ強化実装
-- [ ] パフォーマンス最適化
-- [ ] 監視基盤
+- [x] セキュリティ強化実装
+- [x] パフォーマンス最適化
+- [x] 監視基盤
 
 ---
 
@@ -742,18 +742,18 @@ jobs:
 ```
 
 **7.2 Docker最適化**
-- [ ] マルチステージビルド
-- [ ] docker-compose.yml更新
-- [ ] 本番用Dockerfile
+- [x] マルチステージビルド
+- [x] docker-compose.yml更新
+- [x] 本番用Dockerfile
 
 **7.3 自動デプロイ**
-- [ ] ステージング環境へのデプロイ設定
-- [ ] 本番環境へのデプロイ設定（手動承認）
-- [ ] ロールバック機能
+- [x] ステージング環境へのデプロイ設定
+- [x] 本番環境へのデプロイ設定（手動承認）
+- [x] ロールバック機能
 
 #### 成果物
-- [ ] CI/CDパイプライン
-- [ ] 自動デプロイ環境
+- [x] CI/CDパイプライン
+- [x] 自動デプロイ環境
 
 ---
 
