@@ -983,9 +983,9 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 各フェーズの実装に合わせてすぐにテストを書ける状態にする
 
 #### タスク
-- [ ] jsdom + @testing-library/react + @testing-library/jest-dom のセットアップ
-- [ ] Vitest設定（jsdom環境）と共通テストユーティリティの追加
-- [ ] E2Eテスト基盤（Playwright）のセットアップ
+- [x] jsdom + @testing-library/react + @testing-library/jest-dom のセットアップ
+- [x] Vitest設定（jsdom環境）と共通テストユーティリティの追加
+- [x] E2Eテスト基盤（Playwright）のセットアップ
 
 #### 成果物
 - [ ] UIテスト（jsdom + jest-dom）が動作する
