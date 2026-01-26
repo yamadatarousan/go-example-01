@@ -988,8 +988,8 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 - [x] E2Eテスト基盤（Playwright）のセットアップ
 
 #### 成果物
-- [ ] UIテスト（jsdom + jest-dom）が動作する
-- [ ] E2Eテスト（Playwright）が動作する
+- [x] UIテスト（jsdom + jest-dom）が動作する
+- [x] E2Eテスト（Playwright）が動作する
 
 #### 写経用ディレクトリ（frontend/）のセットアップ手順
 
