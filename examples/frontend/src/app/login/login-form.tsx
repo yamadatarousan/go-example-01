@@ -3,12 +3,20 @@
 
 "use client"; // クライアントコンポーネント（useStateやイベントハンドラを使うため）
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+// ----------------------------------------------------------------------------
+// Server Action のインポート
+// ----------------------------------------------------------------------------
+// "use server" が付いたファイルから関数をインポート
+// 見た目は普通の関数だが、呼び出すとサーバー側で実行される
+import { login } from "./actions";
 
 // ============================================================================
 // Zod スキーマ定義
@@ -49,6 +57,17 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   // --------------------------------------------------------------------------
+  // ルーターとエラー状態
+  // --------------------------------------------------------------------------
+  // useRouter: Next.jsのクライアント側ナビゲーション用フック
+  // App Routerでは "next/navigation" からインポート（Pages Routerは "next/router"）
+  const router = useRouter();
+
+  // サーバーから返されたエラーメッセージを保持
+  // React Hook Formのerrorsはバリデーションエラー用、これはAPIエラー用
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  // --------------------------------------------------------------------------
   // React Hook Form の初期化
   // --------------------------------------------------------------------------
   // useForm<T> にジェネリクスで型を渡すと、フォームデータが型安全になる
@@ -79,8 +98,33 @@ export function LoginForm() {
   // バリデーションは通過済み → data は LoginFormData 型として安全に使える
 
   const onSubmit = async (data: LoginFormData) => {
-    // TODO: 次のタスクでServer Actionを呼び出す
-    console.log("ログイン試行:", data);
+    // 送信前にサーバーエラーをクリア
+    setServerError(null);
+
+    // ------------------------------------------------------------------------
+    // Server Action の呼び出し
+    // ------------------------------------------------------------------------
+    // login(data) は見た目は普通の関数呼び出しだが、実際には:
+    // 1. Next.jsが内部的にHTTP POSTリクエストを生成
+    // 2. サーバー側で login() 関数が実行される
+    // 3. 戻り値がシリアライズされてクライアントに返る
+    //
+    // awaitで待機している間、isSubmittingがtrueになる
+    const result = await login(data);
+
+    // ------------------------------------------------------------------------
+    // 結果の処理
+    // ------------------------------------------------------------------------
+    // Server Actionは ActionResult<User> 型を返す
+    // { success: true, data: User } または { success: false, error: string }
+    if (result.success) {
+      // ログイン成功 → TODO一覧ページへリダイレクト
+      // router.push()はクライアント側でのナビゲーション（ページ全体のリロードなし）
+      router.push("/todos");
+    } else {
+      // ログイン失敗 → エラーメッセージを表示
+      setServerError(result.error);
+    }
   };
 
   // --------------------------------------------------------------------------
