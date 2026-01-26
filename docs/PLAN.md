@@ -906,6 +906,7 @@ cd frontend && npm run dev
 - [x] 基本コンポーネント追加（Button, Input, Label, Card）
 - [x] lib/utils.ts（cn関数）
 - [x] types/index.ts（Todo, User, ApiError等）
+- [ ] 基本UIコンポーネントのUIテスト（Button/Input/Label/Card）
 
 #### 成果物
 - [x] 共通コンポーネントが使える状態
@@ -941,6 +942,7 @@ npx shadcn@latest add button input label card
 - [x] fetchWithAuth / fetchWithoutAuth
 - [x] ActionResult型の定義
 - [x] モックデータ切り替え機能
+- [ ] lib/server-api.ts のユニットテスト（認証あり/なし、エラー分岐）
 
 #### 成果物
 - [x] Server ActionsからAPI呼び出しができる状態
@@ -967,9 +969,27 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 - [x] app/login/actions.ts（Server Action）
 - [x] Cookie へのJWT保存（actions.ts内で実装）
 - [x] login-form.tsxとServer Actionの連携
+- [ ] ログインフォームのUIテスト
+- [ ] ログイン失敗時のエラーメッセージ表示テスト
 
 #### 成果物
 - [x] ログインフォームが表示され、送信できる
+
+---
+
+### Phase 8.4.1: フロントエンドテスト基盤（1日）
+
+#### 目標
+各フェーズの実装に合わせてすぐにテストを書ける状態にする
+
+#### タスク
+- [ ] jsdom + @testing-library/react + @testing-library/jest-dom のセットアップ
+- [ ] Vitest設定（jsdom環境）と共通テストユーティリティの追加
+- [ ] E2Eテスト基盤（Playwright）のセットアップ
+
+#### 成果物
+- [ ] UIテスト（jsdom + jest-dom）が動作する
+- [ ] E2Eテスト（Playwright）が動作する
 
 #### 写経用ディレクトリ（frontend/）のセットアップ手順
 
@@ -992,6 +1012,8 @@ npm install react-hook-form zod @hookform/resolvers
 - [ ] app/signup/actions.ts
 - [ ] middleware.ts（ルート保護）
 - [ ] 認証後のリダイレクト処理
+- [ ] サインアップフォームのUIテスト
+- [ ] 認証フロー（サインアップ→ログイン→TODO一覧）のE2Eテスト
 
 #### 成果物
 - [ ] サインアップ → ログイン → TODO一覧へのフローが動く
@@ -1008,6 +1030,7 @@ TODO一覧を表示する
 - [ ] TODOアイテムコンポーネント
 - [ ] ヘッダーコンポーネント
 - [ ] app/todos/actions.ts（取得用）
+- [ ] TODO一覧のUIテスト
 
 #### 成果物
 - [ ] バックエンドからTODOを取得して一覧表示できる
@@ -1024,6 +1047,8 @@ TODOの追加・更新・削除を実装する
 - [ ] TODO更新（完了チェック、タイトル編集）
 - [ ] TODO削除
 - [ ] Server Actions（create, update, delete）
+- [ ] TODO CRUDのUIテスト
+- [ ] TODO CRUDのE2Eテスト
 
 #### 成果物
 - [ ] TODOのCRUD操作が全て動く
@@ -1042,6 +1067,7 @@ TODOの追加・更新・削除を実装する
 - [ ] components/ui/skeleton.tsx
 - [ ] sonner セットアップ（トースト通知）
 - [ ] layout.tsx に Toaster 追加
+- [ ] エラー/ローディング表示のUIテスト
 
 #### 成果物
 - [ ] エラー・ローディング状態が統一パターンで表示される
@@ -1059,6 +1085,7 @@ TODOの追加・更新・削除を実装する
 - [ ] 今日のTODO表示
 - [ ] 期限切れTODO表示
 - [ ] app/dashboard/actions.ts
+- [ ] ダッシュボードのUIテスト
 
 #### 成果物
 - [ ] ダッシュボードに統計情報が表示される
@@ -1078,6 +1105,8 @@ TODOの追加・更新・削除を実装する
 - [ ] ログアウト機能
 - [ ] 共通ナビゲーション整備
 - [ ] レスポンシブ対応（PC、タブレット、スマートフォン）
+- [ ] 主要画面のUIテスト追加
+- [ ] 主要フローのE2Eテスト追加
 
 #### 成果物
 - [ ] 全画面が揃い、レスポンシブ対応が完了
