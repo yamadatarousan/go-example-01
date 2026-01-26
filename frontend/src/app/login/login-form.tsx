@@ -175,6 +175,11 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "ログイン中..." : "ログイン"}
       </Button>
+
+      {/* サーバーエラーの表示 */}
+      {serverError && (
+        <p className="text-sm text-red-500">{serverError}</p>
+      )}
     </form>
   );
 }
