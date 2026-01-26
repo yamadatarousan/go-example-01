@@ -966,10 +966,10 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 - [x] ログインフォーム（React Hook Form + Zod）
 - [x] app/login/actions.ts（Server Action）
 - [x] Cookie へのJWT保存（actions.ts内で実装）
-- [ ] login-form.tsxとServer Actionの連携
+- [x] login-form.tsxとServer Actionの連携
 
 #### 成果物
-- [ ] ログインフォームが表示され、送信できる
+- [x] ログインフォームが表示され、送信できる
 
 #### 写経用ディレクトリ（frontend/）のセットアップ手順
 
