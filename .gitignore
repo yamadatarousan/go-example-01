@@ -30,3 +30,6 @@ vendor/
 
 # ログファイル
 *.log
+
+# Playwright
+.last-run.json
