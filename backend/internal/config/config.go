@@ -18,6 +18,7 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	DBName   string
+	AutoMigrate bool
 }
 
 // ServerConfig はサーバーの設定
@@ -40,6 +41,7 @@ func Load() *Config {
 			User:     getEnv("DB_USER", "user"),
 			Password: getEnv("DB_PASSWORD", "password"),
 			DBName:   getEnv("DB_NAME", "todo_db"),
+			AutoMigrate: getEnvBool("AUTO_MIGRATE", false),
 		},
 		Server: ServerConfig{
 			Port:         getEnv("SERVER_PORT", "8080"),
@@ -59,6 +61,15 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// getEnvBool は環境変数を取得し、boolに変換する
+func getEnvBool(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value == "true" || value == "1" || value == "TRUE"
+}
+
 // DSN はデータベース接続文字列を生成
 func (c *DatabaseConfig) DSN() string {
 	return "host=" + c.Host +
@@ -67,4 +78,9 @@ func (c *DatabaseConfig) DSN() string {
 		" password=" + c.Password +
 		" dbname=" + c.DBName +
 		" sslmode=disable"
+}
+
+// MigrationURL はマイグレーション用の接続文字列を生成
+func (c *DatabaseConfig) MigrationURL() string {
+	return "postgres://" + c.User + ":" + c.Password + "@" + c.Host + ":" + c.Port + "/" + c.DBName + "?sslmode=disable"
 }

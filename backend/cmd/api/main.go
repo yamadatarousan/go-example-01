@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +23,9 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -35,6 +39,13 @@ func main() {
 		log.Fatalf("データベース接続に失敗しました: %v", err)
 	}
 	defer db.Close()
+
+	// 開発環境のみ自動マイグレーション（AUTO_MIGRATE=true）
+	if cfg.Database.AutoMigrate {
+		if err := runMigrations(db, cfg.Database); err != nil {
+			log.Fatalf("自動マイグレーションに失敗しました: %v", err)
+		}
+	}
 
 	// 必須テーブルの存在チェック（起動時に不足を検知）
 	if err := checkRequiredTables(db, appdb.RequiredTables); err != nil {
@@ -138,6 +149,36 @@ func initDB(dbConfig config.DatabaseConfig) (*sql.DB, error) {
 	return db, nil
 }
 
+// runMigrations は起動時にマイグレーションを実行する
+func runMigrations(db *sql.DB, dbConfig config.DatabaseConfig) error {
+	projectRoot, err := getProjectRoot()
+	if err != nil {
+		return err
+	}
+	migrationsPath := filepath.Join(projectRoot, "db", "migrations")
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return fmt.Errorf("マイグレーション用ドライバの初期化に失敗しました: %w", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://"+migrationsPath,
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return fmt.Errorf("マイグレーションの初期化に失敗しました: %w", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("マイグレーションの実行に失敗しました: %w", err)
+	}
+
+	log.Println("マイグレーションを適用しました")
+	return nil
+}
+
 // checkRequiredTables は必須テーブルが存在するか確認する
 func checkRequiredTables(db *sql.DB, tables []string) error {
 	missing := make([]string, 0)
@@ -155,6 +196,27 @@ func checkRequiredTables(db *sql.DB, tables []string) error {
 		return fmt.Errorf("不足テーブル: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+// getProjectRoot は go.mod を探してプロジェクトルートを特定する
+func getProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("作業ディレクトリの取得に失敗しました: %w", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	return "", fmt.Errorf("プロジェクトルートが見つかりません（go.modがありません）")
 }
 
 // setupRouter はGinルーターを設定
