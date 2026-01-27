@@ -1027,7 +1027,7 @@ npm install react-hook-form zod @hookform/resolvers
 - [x] app/signup/page.tsx（ページ表示）
 - [x] サインアップフォーム（UI + バリデーション）
 - [x] app/signup/actions.ts（Server Action）
-- [ ] 認証後のリダイレクト処理（サインアップ後に自動ログインして /todos へ）
+- [x] 認証後のリダイレクト処理（サインアップ後に自動ログインして /todos へ）
 - [ ] ルート保護 middleware.ts
   - ログイン必須: /todos, /dashboard, /projects, /settings
   - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup

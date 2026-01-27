@@ -4,12 +4,19 @@
 
 "use server";
 
+import { cookies } from "next/headers";
 import { fetchWithoutAuth } from "@/lib/server-api";
-import type { SignupInput, User, ActionResult } from "@/types";
+import type { LoginInput, SignupInput, User, ActionResult } from "@/types";
 
 // サインアップAPIのレスポンス型
 // バックエンドの /signup エンドポイントが返す形式
 type SignupResponse = User;
+
+// ログインAPIのレスポンス型
+type LoginResponse = {
+  token: string;
+  user: User;
+};
 
 // signup Server Action
 export async function signup(input: SignupInput): Promise<ActionResult<User>> {
@@ -17,6 +24,25 @@ export async function signup(input: SignupInput): Promise<ActionResult<User>> {
     const response = await fetchWithoutAuth<SignupResponse>("/signup", {
       method: "POST",
       body: JSON.stringify(input),
+    });
+
+    // サインアップ後に自動ログイン
+    const loginInput: LoginInput = {
+      email: input.email,
+      password: input.password,
+    };
+    const loginResponse = await fetchWithoutAuth<LoginResponse>("/login", {
+      method: "POST",
+      body: JSON.stringify(loginInput),
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.set("token", loginResponse.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return {

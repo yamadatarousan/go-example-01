@@ -63,8 +63,8 @@ export function SignupForm() {
     const result = await signup(data);
 
     if (result.success) {
-      // サインアップ成功 → ログインページへ
-      router.push("/login");
+      // サインアップ成功 → TODO一覧ページへ
+      router.push("/todos");
     } else {
       setServerError(result.error);
     }
