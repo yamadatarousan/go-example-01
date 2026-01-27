@@ -1025,7 +1025,7 @@ npm install react-hook-form zod @hookform/resolvers
 
 #### タスク
 - [x] app/signup/page.tsx（ページ表示）
-- [ ] サインアップフォーム（UI + バリデーション）
+- [x] サインアップフォーム（UI + バリデーション）
 - [ ] app/signup/actions.ts（Server Action）
 - [ ] 認証後のリダイレクト処理（成功時の導線）
 - [ ] ルート保護 middleware.ts
