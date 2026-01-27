@@ -942,7 +942,7 @@ npx shadcn@latest add button input label card
 - [x] fetchWithAuth / fetchWithoutAuth
 - [x] ActionResult型の定義
 - [x] モックデータ切り替え機能
-- [ ] lib/server-api.ts のユニットテスト（認証あり/なし、エラー分岐）
+- [x] lib/server-api.ts のユニットテスト（認証あり/なし、エラー分岐）
 
 #### 成果物
 - [x] Server ActionsからAPI呼び出しができる状態
