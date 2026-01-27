@@ -906,7 +906,7 @@ cd frontend && npm run dev
 - [x] 基本コンポーネント追加（Button, Input, Label, Card）
 - [x] lib/utils.ts（cn関数）
 - [x] types/index.ts（Todo, User, ApiError等）
-- [ ] 基本UIコンポーネントのUIテスト（Button/Input/Label/Card）
+- [x] 基本UIコンポーネントのUIテスト（Button/Input/Label/Card）
 
 #### 成果物
 - [x] 共通コンポーネントが使える状態
