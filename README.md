@@ -4,6 +4,12 @@
 
 このプロジェクトでは、データベースとして **PostgreSQL** を、スキーマ管理ツールとして **golang-migrate/migrate** を使用します。
 
+### 起動時の運用方針（テーブル存在チェック）
+
+- 本番環境は **起動時に必須テーブルの存在チェックのみ実施** します。
+- 開発環境は **AUTO_MIGRATE=true のときだけ起動時に自動マイグレーションを許可** します。
+- 新しいテーブルを追加した場合は、`backend/internal/db/required_tables.go`（写経例: `examples/backend/internal/db/required_tables.go`）に **必須テーブル名を追記** してください。
+
 ### 1. 初回セットアップ
 
 1.  **ツールのインストール (macOSの場合):**

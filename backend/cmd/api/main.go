@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"gin-quickstart/backend/internal/config"
+	appdb "gin-quickstart/backend/internal/db"
 	"gin-quickstart/backend/internal/handler"
 	"gin-quickstart/backend/internal/middleware"
 	"gin-quickstart/backend/internal/repository"
@@ -33,6 +35,11 @@ func main() {
 		log.Fatalf("データベース接続に失敗しました: %v", err)
 	}
 	defer db.Close()
+
+	// 必須テーブルの存在チェック（起動時に不足を検知）
+	if err := checkRequiredTables(db, appdb.RequiredTables); err != nil {
+		log.Fatalf("必須テーブルが不足しています: %v", err)
+	}
 
 	// 依存関係の構築 (Dependency Injection)
 	// Repository層
@@ -129,6 +136,25 @@ func initDB(dbConfig config.DatabaseConfig) (*sql.DB, error) {
 
 	log.Println("データベースに正常に接続しました")
 	return db, nil
+}
+
+// checkRequiredTables は必須テーブルが存在するか確認する
+func checkRequiredTables(db *sql.DB, tables []string) error {
+	missing := make([]string, 0)
+	for _, table := range tables {
+		var regclass sql.NullString
+		err := db.QueryRow("SELECT to_regclass($1)", "public."+table).Scan(&regclass)
+		if err != nil {
+			return fmt.Errorf("テーブル存在チェックに失敗しました: %w", err)
+		}
+		if !regclass.Valid {
+			missing = append(missing, table)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("不足テーブル: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 // setupRouter はGinルーターを設定
