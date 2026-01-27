@@ -969,8 +969,7 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 - [x] app/login/actions.ts（Server Action）
 - [x] Cookie へのJWT保存（actions.ts内で実装）
 - [x] login-form.tsxとServer Actionの連携
-- [ ] ログインフォームのUIテスト
-- [ ] ログイン失敗時のエラーメッセージ表示テスト
+- [x] ログインフォームの表示/挙動テスト（成功・失敗含む）
 
 #### 成果物
 - [x] ログインフォームが表示され、送信できる
