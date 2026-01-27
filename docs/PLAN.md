@@ -1028,7 +1028,7 @@ npm install react-hook-form zod @hookform/resolvers
 - [x] サインアップフォーム（UI + バリデーション）
 - [x] app/signup/actions.ts（Server Action）
 - [x] 認証後のリダイレクト処理（サインアップ後に自動ログインして /todos へ）
-- [ ] サインアップフォームの表示/挙動テスト（成功・失敗：重複ユーザー含む）
+- [x] サインアップフォームの表示/挙動テスト（成功・失敗：重複ユーザー含む）
 - [ ] 認証フローE2E（サインアップ→ログイン→/todos）
 
 #### 成果物
