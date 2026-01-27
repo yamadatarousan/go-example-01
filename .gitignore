@@ -33,3 +33,5 @@ vendor/
 
 # Playwright
 .last-run.json
+test-results/
+playwright-report/
