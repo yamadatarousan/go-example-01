@@ -1028,10 +1028,6 @@ npm install react-hook-form zod @hookform/resolvers
 - [x] サインアップフォーム（UI + バリデーション）
 - [x] app/signup/actions.ts（Server Action）
 - [x] 認証後のリダイレクト処理（サインアップ後に自動ログインして /todos へ）
-- [ ] ルート保護 middleware.ts
-  - ログイン必須: /todos, /dashboard, /projects, /settings
-  - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup
-  - 公開: /
 - [ ] サインアップフォームの表示/挙動テスト（成功・失敗：重複ユーザー含む）
 - [ ] 認証フローE2E（サインアップ→ログイン→/todos）
 
@@ -1051,6 +1047,11 @@ TODO一覧を表示する
 - [ ] ヘッダーコンポーネント
 - [ ] app/todos/actions.ts（取得用）
 - [ ] TODO一覧のUIテスト
+- [ ] ルート保護 middleware.ts（/todos 実装後に対応）
+  - ログイン必須: /todos, /dashboard, /projects, /settings
+  - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup
+  - 公開: /
+  - 以降、保護対象ページ追加時にリスト更新
 
 #### 成果物
 - [ ] バックエンドからTODOを取得して一覧表示できる
