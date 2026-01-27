@@ -1024,13 +1024,16 @@ npm install react-hook-form zod @hookform/resolvers
 サインアップとルート保護を実装する
 
 #### タスク
-- [ ] app/signup/page.tsx
-- [ ] サインアップフォーム
-- [ ] app/signup/actions.ts
-- [ ] middleware.ts（ルート保護）
-- [ ] 認証後のリダイレクト処理
-- [ ] サインアップフォームのUIテスト
-- [ ] 認証フロー（サインアップ→ログイン→TODO一覧）のE2Eテスト
+- [ ] app/signup/page.tsx（ページ表示）
+- [ ] サインアップフォーム（UI + バリデーション）
+- [ ] app/signup/actions.ts（Server Action）
+- [ ] 認証後のリダイレクト処理（成功時の導線）
+- [ ] ルート保護 middleware.ts
+  - ログイン必須: /todos, /dashboard, /projects, /settings
+  - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup
+  - 公開: /
+- [ ] サインアップフォームの表示/挙動テスト（成功・失敗：重複ユーザー含む）
+- [ ] 認証フローE2E（サインアップ→ログイン→/todos）
 
 #### 成果物
 - [ ] サインアップ → ログイン → TODO一覧へのフローが動く
@@ -1366,6 +1369,7 @@ Phase 6で言及したが、現状は未着手のため後回しにする。
 - [ ] 構造化ロギング（zap）
 - [ ] Prometheusメトリクス
 - [ ] HTTPS強制
+- [ ] /admin のフロントエンド実装・ルート保護（管理者ロール対応）
 
 ---
 
