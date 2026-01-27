@@ -1024,7 +1024,7 @@ npm install react-hook-form zod @hookform/resolvers
 サインアップとルート保護を実装する
 
 #### タスク
-- [ ] app/signup/page.tsx（ページ表示）
+- [x] app/signup/page.tsx（ページ表示）
 - [ ] サインアップフォーム（UI + バリデーション）
 - [ ] app/signup/actions.ts（Server Action）
 - [ ] 認証後のリダイレクト処理（成功時の導線）
