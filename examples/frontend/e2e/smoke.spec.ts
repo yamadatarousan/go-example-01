@@ -14,3 +14,17 @@ test("ログイン後にTODO一覧へ遷移する", async ({ page }) => {
 
   await expect(page).toHaveURL("/todos");
 });
+
+test("サインアップ→ログイン→TODO一覧へ遷移する", async ({ page }) => {
+  const email = `test-${Date.now()}@example.com`;
+  const password = "password123";
+
+  await page.goto("/signup");
+
+  await page.getByLabel("メールアドレス").fill(email);
+  await page.getByLabel("パスワード").fill(password);
+  await page.getByRole("button", { name: "サインアップ" }).click();
+
+  // サインアップ後に自動ログインされ、/todosへ遷移する
+  await expect(page).toHaveURL("/todos");
+});
