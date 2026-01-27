@@ -151,7 +151,7 @@ func initDB(dbConfig config.DatabaseConfig) (*sql.DB, error) {
 
 // runMigrations は起動時にマイグレーションを実行する
 func runMigrations(db *sql.DB, dbConfig config.DatabaseConfig) error {
-	projectRoot, err := getProjectRoot()
+	projectRoot, err := findProjectRoot()
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func checkRequiredTables(db *sql.DB, tables []string) error {
 }
 
 // getProjectRoot は go.mod を探してプロジェクトルートを特定する
-func getProjectRoot() (string, error) {
+func findProjectRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("作業ディレクトリの取得に失敗しました: %w", err)
