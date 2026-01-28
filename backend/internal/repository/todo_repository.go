@@ -29,7 +29,7 @@ func (r *todoRepository) FindAll(ctx context.Context, userID int) ([]domain.Todo
 	}
 	defer rows.Close()
 
-	var todos []domain.Todo
+	todos := make([]domain.Todo, 0)
 	for rows.Next() {
 		var todo domain.Todo
 		err := rows.Scan(&todo.ID, &todo.Name, &todo.Description, &todo.Status, &todo.Priority, &todo.DueDate, &todo.UserID, &todo.CategoryID, &todo.ParentTodoID, &todo.CreatedAt, &todo.UpdatedAt)

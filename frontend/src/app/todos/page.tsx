@@ -14,8 +14,6 @@ export default async function TodosPage() {
     errorMessage = error instanceof Error ? error.message : "TODOの取得に失敗しました";
   }
 
-  const safeTodos = Array.isArray(todos) ? todos : [];
-
   return (
     <main className="mx-auto w-full max-w-3xl p-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -27,13 +25,13 @@ export default async function TodosPage() {
         <p className="text-sm text-red-500">{errorMessage}</p>
       )}
 
-      {!errorMessage && safeTodos.length === 0 && (
+      {!errorMessage && todos.length === 0 && (
         <p className="text-sm text-gray-500">TODOがまだありません</p>
       )}
 
-      {!errorMessage && safeTodos.length > 0 && (
+      {!errorMessage && todos.length > 0 && (
         <ul className="space-y-3">
-          {safeTodos.map((todo) => (
+          {todos.map((todo) => (
             <TodoItem key={todo.id} todo={todo} />
           ))}
         </ul>

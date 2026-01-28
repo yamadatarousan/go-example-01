@@ -7,5 +7,9 @@ import type { Todo } from "@/types";
 
 // TODO一覧を取得する
 export async function getTodos(): Promise<Todo[]> {
-  return fetchWithAuth<Todo[]>("/api/v1/todos");
+  const response = await fetchWithAuth<unknown>("/api/v1/todos");
+  if (!Array.isArray(response)) {
+    throw new Error("TODO一覧の取得に失敗しました");
+  }
+  return response as Todo[];
 }
