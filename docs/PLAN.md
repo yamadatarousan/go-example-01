@@ -1052,7 +1052,7 @@ TODO一覧を表示する
   - 取得失敗時の簡易エラー表示（8.8で統一）
 - [x] TODOアイテムコンポーネント
 - [x] app/todos/actions.ts（取得用）
-- [ ] TODO一覧のUIテスト
+- [x] TODO一覧のUIテスト
 - [ ] TODO一覧のE2Eテスト（一覧 or 空状態の確認）
 - [ ] ルート保護 middleware.ts（/todos 実装後に対応）
   - ログイン必須: /todos, /dashboard, /projects, /settings
