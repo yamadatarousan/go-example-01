@@ -1047,12 +1047,12 @@ npm install react-hook-form zod @hookform/resolvers
 TODO一覧を表示する
 
 #### タスク
-- [ ] app/todos/page.tsx（Server Component）
+- [x] app/todos/page.tsx（Server Component）
   - TODOが0件のときの空状態表示
   - 取得失敗時の簡易エラー表示（8.8で統一）
 - [ ] TODOアイテムコンポーネント
 - [ ] ヘッダーコンポーネント（/todos内の最小実装→必要なら共通化）
-- [ ] app/todos/actions.ts（取得用）
+- [x] app/todos/actions.ts（取得用）
 - [ ] TODO一覧のUIテスト
 - [ ] TODO一覧のE2Eテスト（一覧 or 空状態の確認）
 - [ ] ルート保護 middleware.ts（/todos 実装後に対応）
