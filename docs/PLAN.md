@@ -771,6 +771,11 @@ jobs:
 - **認証**: httpOnly Cookie + JWT
 - **テスト**: Vitest + Playwright
 
+#### データ取得方針（構造レール優先）
+
+- 読み取り/書き込みともに `app/**/actions.ts` 経由に統一する
+- Server Component での直接 `fetch` は原則使わない
+
 #### フロントエンドアーキテクチャ
 
 ##### ディレクトリ構造の方針
@@ -1043,10 +1048,13 @@ TODO一覧を表示する
 
 #### タスク
 - [ ] app/todos/page.tsx（Server Component）
+  - TODOが0件のときの空状態表示
+  - 取得失敗時の簡易エラー表示（8.8で統一）
 - [ ] TODOアイテムコンポーネント
-- [ ] ヘッダーコンポーネント
+- [ ] ヘッダーコンポーネント（/todos内の最小実装→必要なら共通化）
 - [ ] app/todos/actions.ts（取得用）
 - [ ] TODO一覧のUIテスト
+- [ ] TODO一覧のE2Eテスト（一覧 or 空状態の確認）
 - [ ] ルート保護 middleware.ts（/todos 実装後に対応）
   - ログイン必須: /todos, /dashboard, /projects, /settings
   - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup
