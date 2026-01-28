@@ -28,3 +28,19 @@ test("サインアップ→ログイン→TODO一覧へ遷移する", async ({ p
   // サインアップ後に自動ログインされ、/todosへ遷移する
   await expect(page).toHaveURL("/todos");
 });
+
+test("TODO一覧が表示される", async ({ page }) => {
+  await page.goto("/todos");
+  await expect(page.getByText("サンプルTODO 1")).toBeVisible();
+  await expect(page.getByText("サンプルTODO 2")).toBeVisible();
+});
+
+test("TODOが0件のときに空状態を表示する", async ({ page }) => {
+  await page.context().addCookies([
+    { name: "mock_todos", value: "empty", url: "http://localhost:3010" },
+  ]);
+
+  await page.goto("/todos");
+
+  await expect(page.getByText("TODOがまだありません")).toBeVisible();
+});

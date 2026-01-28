@@ -48,7 +48,11 @@ export async function fetchWithAuth<T>(
 ): Promise<T> {
   // モックモードの場合はモックデータを返す
   if (USE_MOCK) {
-    return getMockData<T>(endpoint, options.method || "GET");
+    const cookieStore = await cookies();
+    const mockTodosMode = cookieStore.get("mock_todos")?.value;
+    return getMockData<T>(endpoint, options.method || "GET", {
+      mockTodosMode,
+    });
   }
 
   // CookieからJWTトークンを取得
@@ -84,7 +88,11 @@ export async function fetchWithAuth<T>(
 
 // モックデータを返す関数
 // バックエンドが未実装の場合や、フロントエンド単体でテストしたい場合に使用
-function getMockData<T>(endpoint: string, method: string): T {
+function getMockData<T>(
+  endpoint: string,
+  method: string,
+  options?: { mockTodosMode?: string }
+): T {
   // エンドポイントとメソッドに応じたモックデータを返す
   const mockResponses: Record<string, Record<string, unknown>> = {
     "/login": {
@@ -110,6 +118,10 @@ function getMockData<T>(endpoint: string, method: string): T {
       POST: { id: 2, name: "新規プロジェクト", owner_id: 1, created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
     },
   };
+
+  if (endpoint === "/api/v1/todos" && options?.mockTodosMode === "empty") {
+    mockResponses["/api/v1/todos"].GET = [];
+  }
 
   const endpointMocks = mockResponses[endpoint];
   if (endpointMocks && endpointMocks[method]) {
