@@ -18,6 +18,7 @@ export default async function TodosPage() {
     <main className="mx-auto w-full max-w-3xl p-6 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">TODO一覧</h1>
+        <div className="text-sm text-gray-500">ログイン済み</div>
       </header>
 
       {errorMessage && (
