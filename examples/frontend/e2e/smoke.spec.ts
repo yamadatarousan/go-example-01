@@ -30,6 +30,10 @@ test("サインアップ→ログイン→TODO一覧へ遷移する", async ({ p
 });
 
 test("TODO一覧が表示される", async ({ page }) => {
+  await page.context().addCookies([
+    { name: "token", value: "dummy-token", url: "http://localhost:3010" },
+  ]);
+
   await page.goto("/todos");
   await expect(page.getByText("サンプルTODO 1")).toBeVisible();
   await expect(page.getByText("サンプルTODO 2")).toBeVisible();
@@ -37,6 +41,7 @@ test("TODO一覧が表示される", async ({ page }) => {
 
 test("TODOが0件のときに空状態を表示する", async ({ page }) => {
   await page.context().addCookies([
+    { name: "token", value: "dummy-token", url: "http://localhost:3010" },
     { name: "mock_todos", value: "empty", url: "http://localhost:3010" },
   ]);
 
