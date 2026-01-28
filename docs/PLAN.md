@@ -1053,7 +1053,7 @@ TODO一覧を表示する
 - [x] TODOアイテムコンポーネント
 - [x] app/todos/actions.ts（取得用）
 - [x] TODO一覧のUIテスト
-- [ ] TODO一覧のE2Eテスト（一覧 or 空状態の確認）
+- [ ] TODO一覧のE2Eテスト（一覧 and 空状態の確認）
 - [ ] ルート保護 middleware.ts（/todos 実装後に対応）
   - ログイン必須: /todos, /dashboard, /projects, /settings
   - 未ログイン専用（ログイン済みは /todos へ）: /login, /signup
