@@ -2,6 +2,7 @@
 
 import { getTodos } from "./actions";
 import type { Todo } from "@/types";
+import { TodoItem } from "@/components/todo-item";
 
 export default async function TodosPage() {
   let todos: Todo[] = [];
@@ -30,12 +31,7 @@ export default async function TodosPage() {
       {!errorMessage && todos.length > 0 && (
         <ul className="space-y-3">
           {todos.map((todo) => (
-            <li key={todo.id} className="rounded-md border p-4">
-              <p className="font-medium">{todo.name}</p>
-              {todo.description && (
-                <p className="text-sm text-gray-500">{todo.description}</p>
-              )}
-            </li>
+            <TodoItem key={todo.id} todo={todo} />
           ))}
         </ul>
       )}

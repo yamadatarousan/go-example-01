@@ -1050,7 +1050,7 @@ TODO一覧を表示する
 - [x] app/todos/page.tsx（Server Component）
   - TODOが0件のときの空状態表示
   - 取得失敗時の簡易エラー表示（8.8で統一）
-- [ ] TODOアイテムコンポーネント
+- [x] TODOアイテムコンポーネント
 - [ ] ヘッダーコンポーネント（/todos内の最小実装→必要なら共通化）
 - [x] app/todos/actions.ts（取得用）
 - [ ] TODO一覧のUIテスト
