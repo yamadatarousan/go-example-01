@@ -96,7 +96,7 @@ function getMockData<T>(
   // エンドポイントとメソッドに応じたモックデータを返す
   const mockResponses: Record<string, Record<string, unknown>> = {
     "/login": {
-      POST: { token: "mock-jwt-token", user: { id: 1, email: "test@example.com", role: "user" } },
+      POST: { access_token: "mock-jwt-token", refresh_token: "mock-refresh-token" },
     },
     "/signup": {
       POST: { id: 1, email: "test@example.com", role: "user" },

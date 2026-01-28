@@ -27,7 +27,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { fetchWithoutAuth } from "@/lib/server-api";
-import type { LoginInput, User, ActionResult } from "@/types";
+import type { LoginInput, ActionResult } from "@/types";
 
 // ============================================================================
 // ログインAPIのレスポンス型
@@ -35,8 +35,8 @@ import type { LoginInput, User, ActionResult } from "@/types";
 // バックエンドの /login エンドポイントが返す形式
 
 type LoginResponse = {
-  token: string;
-  user: User;
+  access_token: string;
+  refresh_token: string;
 };
 
 // ============================================================================
@@ -49,7 +49,7 @@ type LoginResponse = {
 // - 戻り値もシリアライズ可能な値のみ
 // - async 関数である必要がある
 
-export async function login(input: LoginInput): Promise<ActionResult<User>> {
+export async function login(input: LoginInput): Promise<ActionResult<null>> {
   try {
     // ------------------------------------------------------------------------
     // 1. バックエンドAPIの呼び出し
@@ -77,7 +77,7 @@ export async function login(input: LoginInput): Promise<ActionResult<User>> {
     // MaxAge: Cookieの有効期限（秒）。7日間 = 60 * 60 * 24 * 7
 
     const cookieStore = await cookies();
-    cookieStore.set("token", response.token, {
+    cookieStore.set("token", response.access_token, {
       httpOnly: true,                                    // JSからアクセス不可
       secure: process.env.NODE_ENV === "production",    // 本番はHTTPSのみ
       sameSite: "lax",                                   // CSRF対策
@@ -98,7 +98,7 @@ export async function login(input: LoginInput): Promise<ActionResult<User>> {
 
     return {
       success: true,
-      data: response.user,
+      data: null,
     };
   } catch (error) {
     // ------------------------------------------------------------------------

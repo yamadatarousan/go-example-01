@@ -14,8 +14,8 @@ type SignupResponse = User;
 
 // ログインAPIのレスポンス型
 type LoginResponse = {
-  token: string;
-  user: User;
+  access_token: string;
+  refresh_token: string;
 };
 
 // signup Server Action
@@ -37,7 +37,7 @@ export async function signup(input: SignupInput): Promise<ActionResult<User>> {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set("token", loginResponse.token, {
+    cookieStore.set("token", loginResponse.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
