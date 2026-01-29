@@ -1,5 +1,3 @@
-// ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
-// 例: "gin-quickstart/examples/backend/internal/config" → "gin-quickstart/backend/internal/config"
 
 package main
 
@@ -32,7 +30,6 @@ import (
 var testDB *sql.DB
 
 // getProjectRoot はgo.modファイルを探してプロジェクトルートを特定します。
-// これにより、examples/cmd/api でもcmd/api でも同じコードで動作します。
 func getProjectRoot() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -68,7 +65,6 @@ func TestMain(m *testing.M) {
 	isCI := os.Getenv("CI") == "true"
 
 	// プロジェクトルートを取得
-	// ★ これにより、examples/cmd/api でもcmd/api でも同じコードで動作します
 	projectRoot := getProjectRoot()
 	dockerComposePath := filepath.Join(projectRoot, "docker-compose.test.yml")
 	migrationsPath := filepath.Join(projectRoot, "db", "migrations")
@@ -213,7 +209,6 @@ func setupTestRouter(dbConn *sql.DB) *gin.Engine {
 }
 
 // loadSeedDataはseed.sqlを読み込み、テストDBに適用します。
-// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（examples配下でも同じ）
 func loadSeedData(db *sql.DB, seedDataPath string) error {
 	// ★ プロジェクトルート直下のtestdata/seed.sqlを参照（常に同じファイルを使用）
 	seedSQL, err := os.ReadFile(seedDataPath)

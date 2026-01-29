@@ -1,38 +1,21 @@
 # go-example-01 プロジェクト拡張プラン
 
 ## 前提
-- AIはexamplesディレクトリ配下しか手を付けない
-- AIはプロジェクトディレクトリの直下を原則として編集しない(README.mdやPLAN.mdなどのドキュメントを除く)
 - コメントは日本語で書くこと
-- **🐳 Docker・テスト関連ファイルの例外ルール**:
+- **🐳 Docker・テスト関連ファイルの運用ルール**:
   - **Docker関連ファイルは常にプロジェクトルート直下のものを使用する**
     - `docker-compose.test.yml`
     - `testdata/seed.sql`
-  - examples配下のテストコードも、プロジェクトルート直下のDocker設定・テストデータを参照する
-  - これらのファイルを修正する際は、**例外的にプロジェクトルート直下を直接編集してよい**
+  - これらのファイルを修正する際は、**プロジェクトルート直下を直接編集してよい**
   - 理由: 相対パスの不一致によるバグを防ぐため、Docker設定とテストデータは1箇所に集約する
   - **📝 main_test.goの実装方式**:
     - `getProjectRoot()`関数でgo.modを探してプロジェクトルートを自動検出
     - `filepath.Join(projectRoot, "docker-compose.test.yml")` でパス構築
-    - これにより`examples/cmd/api/`でも`cmd/api/`でも**同じコード**で動作する
-    - **そのまま写経しても正しく動作する**設計
 - **🧪 テストの原則**:
   - **新しいエンドポイントを追加するたびに、そのエンドポイントの動作確認テストも必ず追加する**
   - 手動での動作確認に頼らず、自動テストで品質を保証する
   - 各フェーズの完了時には、そのフェーズで追加された全エンドポイントのテストが存在することを確認する
   - テストは統合テスト形式で実装し、正常系・異常系の両方をカバーする
-- **📁 空ファイル作成ルール（写経用ディレクトリ）**:
-  - `examples/` 配下にファイルやディレクトリを作成したら、**同じパスで空ファイルを写経用ディレクトリにも作成する**
-  - 例: `examples/frontend/src/app/page.tsx` を作成 → `frontend/src/app/page.tsx`（空）も作成
-  - 例: `examples/internal/handler/foo.go` を作成 → `internal/handler/foo.go`（空）も作成
-  - 空ファイルにはコメントを入れず、完全に空の状態にする
-  - 目的: ユーザーが写経すべきファイル構造を明確にするため
-  - **⚠️ 例外: ツール生成ファイルはプレースホルダー不要**:
-    - `create-next-app`が生成するファイル（`layout.tsx`, `page.tsx`等の初期ファイル）
-    - `npx shadcn@latest add`が生成するファイル（`components/ui/*`）
-    - これらはユーザーが同じコマンドを実行すれば生成されるため、空ファイルは不要
-    - 代わりにPLAN.mdに実行すべきコマンドを記載する
-  - **プレースホルダーを作成するもの**: AIが手書きするファイル（`types/index.ts`, `lib/server-api.ts`等）
 
 ## 📌 現状分析
 
@@ -57,14 +40,13 @@
 ### プロジェクト構造
 ```
 go-example-01/
-├── main.go                   # 単一ファイル実装（426行）
-├── repository.go             # データアクセス層（139行）
-├── main_test.go              # JWTテスト
-├── integration_test.go       # 統合テスト
+├── backend/                  # Go APIサーバ
+├── frontend/                 # Next.js フロントエンド
 ├── db/migrations/            # マイグレーションファイル（7個）
 ├── testdata/                 # テスト用シードデータ
-├── examples/                 # 実装例（PUT/DELETE追加済み）
-└── docker-compose.yml        # PostgreSQL設定
+├── docs/                     # ドキュメント
+├── docker-compose.yml        # PostgreSQL設定
+└── docker-compose.test.yml   # テスト用PostgreSQL設定
 ```
 
 ---
@@ -437,8 +419,7 @@ Phase 3に進む前に、Phase 1およびPhase 2で実装された全エンド�
 - ロールベースアクセス制御（管理者権限）のテスト
 
 **テストファイル**:
-- `examples/tests/integration/endpoint_test.go` - 全エンドポイントのテスト
-- 既存の `integration_test.go` を拡張する形でも可
+- `backend/cmd/api/main_test.go` - 全エンドポイントの統合テスト
 
 #### 成果物
 - ✅ 拡張されたTODOモデル（優先度、期限、ステータス、説明等）
@@ -867,38 +848,6 @@ Next.js プロジェクトを作成し、開発環境を整える
 #### 成果物
 - [x] `npm run dev` で起動できるプロジェクト
 
-#### 写経用ディレクトリ（frontend/）の初期化手順
-
-AIは`examples/frontend/`のみを編集する。写経用の`frontend/`は以下の手順で初期化する。
-
-**1. プロジェクト作成**
-```bash
-# プロジェクトルート（go-example-01/）で実行
-npx create-next-app@latest frontend
-```
-
-create-next-appの質問への回答:
-```
-✔ Would you like to use the recommended Next.js defaults? › No, customize settings
-✔ Would you like to use TypeScript? … Yes
-✔ Which linter would you like to use? › ESLint
-✔ Would you like to use React Compiler? … No
-✔ Would you like to use Tailwind CSS? … Yes
-✔ Would you like your code inside a `src/` directory? … Yes
-✔ Would you like to use App Router? (recommended) … Yes
-✔ Would you like to customize the import alias (`@/*` by default)? … No
-```
-
-**2. ディレクトリ構造の作成**
-```bash
-mkdir -p frontend/src/{components,lib,types}
-```
-
-**3. 動作確認**
-```bash
-cd frontend && npm run dev
-```
-
 ---
 
 ### Phase 8.2: UIコンポーネント基盤（3日）
@@ -915,8 +864,6 @@ cd frontend && npm run dev
 
 #### 成果物
 - [x] 共通コンポーネントが使える状態
-
-#### 写経用ディレクトリ（frontend/）のセットアップ手順
 
 **1. shadcn/ui 初期化**
 ```bash
@@ -952,7 +899,7 @@ npx shadcn@latest add button input label card
 #### 成果物
 - [x] Server ActionsからAPI呼び出しができる状態
 
-#### 写経用ディレクトリ（frontend/）のセットアップ手順
+#### 環境変数設定
 
 **環境変数ファイルの作成:**
 ```bash
@@ -1013,7 +960,7 @@ echo 'USE_MOCK=false' >> frontend/.env.local
 - [x] UIテスト（jsdom + jest-dom）が動作する
 - [x] E2Eテスト（Playwright）が動作する
 
-#### 写経用ディレクトリ（frontend/）のセットアップ手順
+#### パッケージインストール
 
 **パッケージのインストール:**
 ```bash

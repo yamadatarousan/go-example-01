@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	// ★★★ 重要: プロジェクトディレクトリ直下に写経する際は、import pathから "examples/" を削除してください ★★★
 	// 例: "gin-quickstart/backend/internal/domain" → "gin-quickstart/backend/internal/domain"
 	"gin-quickstart/backend/internal/domain"
 
