@@ -1354,10 +1354,11 @@ Phase 6で言及したが、現状は未着手のため後回しにする。
   - 手編集禁止: 生成物配下は手編集禁止（OpenAPIは `openapi/openapi.yaml` のみ編集）
   - 更新フロー: 仕様更新 → 生成コマンド実行 → CIで差分検知
   - CIでの更新漏れ検知: 生成後に差分があればCIを失敗させる
+  - 検証/lint: Redocly CLI を採用（OpenAPI 3.1 の検証とlintをCIで実行）
 
 - [X] 目的と範囲を確定（/todos 系のみを最小導入対象として合意、既存APIは維持）
 - [X] 生成物の運用ルールを決定（生成先ディレクトリ、手編集禁止、更新フロー、CIでの更新漏れ検知）
-- [ ] OpenAPIの検証/lint方法を決定（CIで仕様の妥当性を検証）
+- [X] OpenAPIの検証/lint方法を決定（CIで仕様の妥当性を検証）
 - [ ] OpenAPI 3.1 の仕様ファイルを作成（`openapi/openapi.yaml`）
 - [ ] /todos 系エンドポイントを定義（一覧・詳細・作成・更新・削除・complete/reopen・overdue/today/week・search・statistics）
 - [ ] スキーマ定義を追加（`Todo`, `CreateTodoInput`, `UpdateTodoInput`, `SearchResult`, `Statistics`）
