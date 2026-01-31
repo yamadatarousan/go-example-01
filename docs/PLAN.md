@@ -1360,7 +1360,7 @@ Phase 6で言及したが、現状は未着手のため後回しにする。
 - [X] 生成物の運用ルールを決定（生成先ディレクトリ、手編集禁止、更新フロー、CIでの更新漏れ検知）
 - [X] OpenAPIの検証/lint方法を決定（CIで仕様の妥当性を検証）
 - [X] OpenAPI 3.1 の仕様ファイルを作成（`openapi/openapi.yaml`）
-- [ ] /todos 系エンドポイントを定義（一覧・詳細・作成・更新・削除・complete/reopen・overdue/today/week・search・statistics）
+- [X] /todos 系エンドポイントを定義（一覧・詳細・作成・更新・削除・complete/reopen・overdue/today/week・search・statistics）
 - [ ] スキーマ定義を追加（`Todo`, `CreateTodoInput`, `UpdateTodoInput`, `SearchResult`, `Statistics`）
 - [ ] null ポリシーを明文化（フロント境界は null を最小化。nullable にする項目と省略可能項目を明示）
 - [ ] エラーレスポンスの共通スキーマを定義（`ApiError` など）
