@@ -34,6 +34,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
     post:
       tags: [Todos]
       operationId: createTodo
@@ -53,6 +55,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Todo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/todos/{id}:
     get:
       tags: [Todos]
@@ -69,6 +75,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     put:
       tags: [Todos]
       operationId: updateTodo
@@ -90,6 +100,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Todo"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     delete:
       tags: [Todos]
       operationId: deleteTodo
@@ -110,6 +126,10 @@ paths:
                     type: string
                 required:
                   - message
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
   /api/v1/todos/{id}/complete:
     post:
       tags: [Todos]
@@ -126,6 +146,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
   /api/v1/todos/{id}/reopen:
     post:
       tags: [Todos]
@@ -142,6 +166,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
   /api/v1/todos/overdue:
     get:
       tags: [Todos]
@@ -158,6 +186,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/todos/today:
     get:
       tags: [Todos]
@@ -174,6 +204,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/todos/week:
     get:
       tags: [Todos]
@@ -190,6 +222,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Todo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/todos/search:
     get:
       tags: [Todos]
@@ -270,6 +304,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SearchResult"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /api/v1/todos/statistics:
     get:
       tags: [Todos]
@@ -284,6 +322,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Statistics"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 components:
   securitySchemes:
     bearerAuth:
@@ -297,7 +337,41 @@ components:
       required: true
       schema:
         type: integer
+  responses:
+    BadRequestError:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFoundError:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
   schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type:
+            - string
+            - "null"
+        details:
+          type:
+            - string
+            - "null"
+      required:
+        - error
     Todo:
       type: object
       properties:

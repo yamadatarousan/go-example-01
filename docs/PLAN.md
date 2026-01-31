@@ -1363,7 +1363,7 @@ Phase 6で言及したが、現状は未着手のため後回しにする。
 - [X] /todos 系エンドポイントを定義（一覧・詳細・作成・更新・削除・complete/reopen・overdue/today/week・search・statistics）
 - [X] スキーマ定義を追加（`Todo`, `CreateTodoInput`, `UpdateTodoInput`, `SearchResult`, `Statistics`）
 - [X] null ポリシーを明文化（フロント境界は null を最小化。nullable にする項目と省略可能項目を明示）
-- [ ] エラーレスポンスの共通スキーマを定義（`ApiError` など）
+- [X] エラーレスポンスの共通スキーマを定義（`ApiError` など）
 - [ ] エラーのHTTPステータス方針を定義（認証/認可/バリデーション/NotFound 等）
 - [ ] バックエンド: openapi から Go 型を生成（`oapi-codegen` 等）
 - [ ] バックエンド: Gin のリクエストバリデーションを有効化（生成ミドルウェアの適用）
