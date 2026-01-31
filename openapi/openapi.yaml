@@ -371,13 +371,11 @@ components:
         error:
           type: string
         message:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
         details:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
       required:
         - error
     Todo:
@@ -388,9 +386,8 @@ components:
         name:
           type: string
         description:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           description: Nullable. Optional long text.
         status:
           type: string
@@ -399,27 +396,23 @@ components:
           type: string
           enum: [low, medium, high]
         due_date:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           format: date-time
           description: Nullable. Due date can be omitted.
         user_id:
           type: integer
         category_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no category.
         parent_todo_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no parent.
         project_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no project.
         created_at:
           type: string
@@ -441,9 +434,8 @@ components:
         name:
           type: string
         description:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           description: Nullable. Optional long text.
         status:
           type: string
@@ -452,25 +444,21 @@ components:
           type: string
           enum: [low, medium, high]
         due_date:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           format: date-time
           description: Nullable. Due date can be omitted.
         category_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no category.
         parent_todo_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no parent.
         project_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Unset when no project.
         tag_ids:
           type: array
@@ -482,52 +470,43 @@ components:
       type: object
       properties:
         name:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           description: Nullable. Omit to keep current value.
         description:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           description: Nullable. Omit to keep current value.
         status:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           enum: [todo, in_progress, done]
           description: Nullable. Omit to keep current value.
         priority:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           enum: [low, medium, high]
           description: Nullable. Omit to keep current value.
         due_date:
-          type:
-            - string
-            - "null"
+          type: string
+          nullable: true
           format: date-time
           description: Nullable. Omit to keep current value.
         category_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Omit to keep current value.
         parent_todo_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Omit to keep current value.
         project_id:
-          type:
-            - integer
-            - "null"
+          type: integer
+          nullable: true
           description: Nullable. Omit to keep current value.
         tag_ids:
-          type:
-            - array
-            - "null"
+          type: array
+            : true
           items:
             type: integer
           description: Nullable. Omit to keep current value.
