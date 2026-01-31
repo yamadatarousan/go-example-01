@@ -1347,10 +1347,18 @@ Phase 6で言及したが、現状は未着手のため後回しにする。
   - 目的: /todos 系の境界契約を明文化し、null混入や型不整合によるフロント障害を再発防止する
   - 範囲: /api/v1/todos 系のみを最小導入対象とし、既存APIは維持（互換性を壊す変更はしない）
 
+- **運用ルール（確定事項）**:
+  - OpenAPI仕様: `openapi/openapi.yaml`
+  - Go生成物: `backend/internal/openapi/gen`
+  - TS生成物: `frontend/src/openapi`
+  - 手編集禁止: 生成物配下は手編集禁止（OpenAPIは `openapi/openapi.yaml` のみ編集）
+  - 更新フロー: 仕様更新 → 生成コマンド実行 → CIで差分検知
+  - CIでの更新漏れ検知: 生成後に差分があればCIを失敗させる
+
 - [X] 目的と範囲を確定（/todos 系のみを最小導入対象として合意、既存APIは維持）
-- [ ] 生成物の運用ルールを決定（生成先ディレクトリ、手編集禁止、更新フロー、CIでの更新漏れ検知）
+- [X] 生成物の運用ルールを決定（生成先ディレクトリ、手編集禁止、更新フロー、CIでの更新漏れ検知）
 - [ ] OpenAPIの検証/lint方法を決定（CIで仕様の妥当性を検証）
-- [ ] OpenAPI 3.1 の仕様ファイルを作成（`docs/openapi.yaml`）
+- [ ] OpenAPI 3.1 の仕様ファイルを作成（`openapi/openapi.yaml`）
 - [ ] /todos 系エンドポイントを定義（一覧・詳細・作成・更新・削除・complete/reopen・overdue/today/week・search・statistics）
 - [ ] スキーマ定義を追加（`Todo`, `CreateTodoInput`, `UpdateTodoInput`, `SearchResult`, `Statistics`）
 - [ ] null ポリシーを明文化（フロント境界は null を最小化。nullable にする項目と省略可能項目を明示）
