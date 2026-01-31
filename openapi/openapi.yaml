@@ -291,4 +291,183 @@ components:
       required: true
       schema:
         type: integer
-  schemas: {}
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        due_date:
+          type:
+            - string
+            - "null"
+          format: date-time
+        user_id:
+          type: integer
+        category_id:
+          type:
+            - integer
+            - "null"
+        parent_todo_id:
+          type:
+            - integer
+            - "null"
+        project_id:
+          type:
+            - integer
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - status
+        - priority
+        - user_id
+        - created_at
+        - updated_at
+    CreateTodoInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        due_date:
+          type:
+            - string
+            - "null"
+          format: date-time
+        category_id:
+          type:
+            - integer
+            - "null"
+        parent_todo_id:
+          type:
+            - integer
+            - "null"
+        project_id:
+          type:
+            - integer
+            - "null"
+        tag_ids:
+          type: array
+          items:
+            type: integer
+      required:
+        - name
+    UpdateTodoInput:
+      type: object
+      properties:
+        name:
+          type:
+            - string
+            - "null"
+        description:
+          type:
+            - string
+            - "null"
+        status:
+          type:
+            - string
+            - "null"
+          enum: [todo, in_progress, done]
+        priority:
+          type:
+            - string
+            - "null"
+          enum: [low, medium, high]
+        due_date:
+          type:
+            - string
+            - "null"
+          format: date-time
+        category_id:
+          type:
+            - integer
+            - "null"
+        parent_todo_id:
+          type:
+            - integer
+            - "null"
+        project_id:
+          type:
+            - integer
+            - "null"
+        tag_ids:
+          type:
+            - array
+            - "null"
+          items:
+            type: integer
+    SearchResult:
+      type: object
+      properties:
+        todos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Todo"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+      required:
+        - todos
+        - total
+        - page
+        - limit
+        - total_pages
+    Statistics:
+      type: object
+      properties:
+        total_count:
+          type: integer
+        status_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        priority_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        overdue_count:
+          type: integer
+        due_today_count:
+          type: integer
+        due_this_week_count:
+          type: integer
+      required:
+        - total_count
+        - status_counts
+        - priority_counts
+        - overdue_count
+        - due_today_count
+        - due_this_week_count
