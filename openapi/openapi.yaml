@@ -9,6 +9,14 @@ info:
     - Response fields are non-null by default.
     - Only fields explicitly defined as nullable may return null.
     - Omitted fields are used to represent "unknown/unset" where applicable.
+
+    HTTP status policy:
+    - 400: Validation or malformed request.
+    - 401: Missing/invalid authentication.
+    - 403: Authenticated but not allowed.
+    - 404: Resource not found.
+    - 409: Conflict (duplicate or uniqueness violation).
+    - 500: Unexpected server error.
 servers:
   - url: http://localhost:8080
     description: Local development
