@@ -18,6 +18,7 @@ import (
 	appdb "gin-quickstart/backend/internal/db"
 	"gin-quickstart/backend/internal/handler"
 	"gin-quickstart/backend/internal/middleware"
+	openapi "gin-quickstart/backend/internal/openapi/gen"
 	"gin-quickstart/backend/internal/repository"
 	"gin-quickstart/backend/internal/service"
 
@@ -79,6 +80,7 @@ func main() {
 	// Handler層
 	userHandler := handler.NewUserHandler(authService)
 	todoHandler := handler.NewTodoHandler(todoService)
+	todoOpenAPIHandler := handler.NewTodoOpenAPIAdapter(todoHandler)
 	adminHandler := handler.NewAdminHandler(adminService)
 	categoryHandler := handler.NewCategoryHandler(categoryService)             // Phase 2で追加
 	notificationHandler := handler.NewNotificationHandler(notificationService) // Phase 4で追加
@@ -89,7 +91,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler(db)                              // Phase 6で追加
 
 	// ルーターの設定
-	router := setupRouter(cfg, authService, userHandler, todoHandler, adminHandler, categoryHandler, notificationHandler, reminderHandler, projectHandler, commentHandler, assignmentHandler, healthHandler)
+	router := setupRouter(cfg, authService, userHandler, todoOpenAPIHandler, adminHandler, categoryHandler, notificationHandler, reminderHandler, projectHandler, commentHandler, assignmentHandler, healthHandler)
 
 	// バックグラウンドワーカーのコンテキスト
 	workerCtx, workerCancel := context.WithCancel(context.Background())
@@ -224,7 +226,7 @@ func setupRouter(
 	cfg *config.Config,
 	authService *service.AuthService,
 	userHandler *handler.UserHandler,
-	todoHandler *handler.TodoHandler,
+	todoOpenAPIHandler *handler.TodoOpenAPIAdapter,
 	adminHandler *handler.AdminHandler,
 	categoryHandler *handler.CategoryHandler,         // Phase 2で追加
 	notificationHandler *handler.NotificationHandler, // Phase 4で追加
@@ -282,24 +284,6 @@ func setupRouter(
 	v1 := router.Group("/api/v1")
 	v1.Use(middleware.AuthMiddleware(authService))
 	{
-		// TODOエンドポイント
-		v1.GET("/todos", handler.ErrorHandler(todoHandler.GetTodos))
-		v1.GET("/todos/:id", handler.ErrorHandler(todoHandler.GetTodo))
-		v1.POST("/todos", handler.ErrorHandler(todoHandler.CreateTodo))
-		v1.PUT("/todos/:id", handler.ErrorHandler(todoHandler.UpdateTodo))
-		v1.DELETE("/todos/:id", handler.ErrorHandler(todoHandler.DeleteTodo))
-
-		// Phase 2で追加されたTODOエンドポイント
-		v1.POST("/todos/:id/complete", handler.ErrorHandler(todoHandler.CompleteTodo)) // TODO完了
-		v1.POST("/todos/:id/reopen", handler.ErrorHandler(todoHandler.ReopenTodo))     // TODO再開
-		v1.GET("/todos/overdue", handler.ErrorHandler(todoHandler.GetOverdueTodos))    // 期限切れTODO
-		v1.GET("/todos/today", handler.ErrorHandler(todoHandler.GetTodayTodos))        // 今日のTODO
-		v1.GET("/todos/week", handler.ErrorHandler(todoHandler.GetThisWeekTodos))      // 今週のTODO
-
-		// Phase 3で追加されたTODOエンドポイント
-		v1.GET("/todos/search", handler.ErrorHandler(todoHandler.SearchTodos))       // TODO検索
-		v1.GET("/todos/statistics", handler.ErrorHandler(todoHandler.GetStatistics)) // TODO統計情報
-
 		// カテゴリーエンドポイント（Phase 2で追加）
 		v1.POST("/categories", handler.ErrorHandler(categoryHandler.CreateCategory))      // カテゴリー作成
 		v1.GET("/categories", handler.ErrorHandler(categoryHandler.GetCategories))        // カテゴリー一覧
@@ -350,6 +334,20 @@ func setupRouter(
 			adminRoutes.GET("/users", handler.ErrorHandler(adminHandler.GetAllUsers))
 		}
 	}
+
+	openapi.RegisterHandlersWithOptions(router, todoOpenAPIHandler, openapi.GinServerOptions{
+		Middlewares: []openapi.MiddlewareFunc{
+			func(c *gin.Context) {
+				middleware.AuthMiddleware(authService)(c)
+			},
+		},
+		ErrorHandler: func(c *gin.Context, err error, statusCode int) {
+			c.JSON(statusCode, gin.H{
+				"error":   "Bad Request",
+				"details": err.Error(),
+			})
+		},
+	})
 
 	return router
 }
