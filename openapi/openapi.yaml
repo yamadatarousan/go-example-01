@@ -2,7 +2,13 @@ openapi: 3.1.0
 info:
   title: go-example-01 API
   version: 1.0.0
-  description: TODO API (initial OpenAPI contract for /api/v1/todos)
+  description: |-
+    TODO API (initial OpenAPI contract for /api/v1/todos)
+
+    Null policy:
+    - Response fields are non-null by default.
+    - Only fields explicitly defined as nullable may return null.
+    - Omitted fields are used to represent "unknown/unset" where applicable.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -303,6 +309,7 @@ components:
           type:
             - string
             - "null"
+          description: Nullable. Optional long text.
         status:
           type: string
           enum: [todo, in_progress, done]
@@ -314,20 +321,24 @@ components:
             - string
             - "null"
           format: date-time
+          description: Nullable. Due date can be omitted.
         user_id:
           type: integer
         category_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no category.
         parent_todo_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no parent.
         project_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no project.
         created_at:
           type: string
           format: date-time
@@ -351,6 +362,7 @@ components:
           type:
             - string
             - "null"
+          description: Nullable. Optional long text.
         status:
           type: string
           enum: [todo, in_progress, done]
@@ -362,18 +374,22 @@ components:
             - string
             - "null"
           format: date-time
+          description: Nullable. Due date can be omitted.
         category_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no category.
         parent_todo_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no parent.
         project_id:
           type:
             - integer
             - "null"
+          description: Nullable. Unset when no project.
         tag_ids:
           type: array
           items:
@@ -387,43 +403,52 @@ components:
           type:
             - string
             - "null"
+          description: Nullable. Omit to keep current value.
         description:
           type:
             - string
             - "null"
+          description: Nullable. Omit to keep current value.
         status:
           type:
             - string
             - "null"
           enum: [todo, in_progress, done]
+          description: Nullable. Omit to keep current value.
         priority:
           type:
             - string
             - "null"
           enum: [low, medium, high]
+          description: Nullable. Omit to keep current value.
         due_date:
           type:
             - string
             - "null"
           format: date-time
+          description: Nullable. Omit to keep current value.
         category_id:
           type:
             - integer
             - "null"
+          description: Nullable. Omit to keep current value.
         parent_todo_id:
           type:
             - integer
             - "null"
+          description: Nullable. Omit to keep current value.
         project_id:
           type:
             - integer
             - "null"
+          description: Nullable. Omit to keep current value.
         tag_ids:
           type:
             - array
             - "null"
           items:
             type: integer
+          description: Nullable. Omit to keep current value.
     SearchResult:
       type: object
       properties:
