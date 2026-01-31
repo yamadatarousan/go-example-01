@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: go-example-01 API
+  version: 1.0.0
+  description: TODO API (initial OpenAPI contract for /api/v1/todos)
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.example.com
+    description: Production (placeholder)
+paths: {}
+components:
+  schemas: {}
