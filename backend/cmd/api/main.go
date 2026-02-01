@@ -22,8 +22,11 @@ import (
 	"gin-quickstart/backend/internal/repository"
 	"gin-quickstart/backend/internal/service"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	oapigin "github.com/oapi-codegen/gin-middleware"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -335,7 +338,30 @@ func setupRouter(
 		}
 	}
 
-	openapi.RegisterHandlersWithOptions(router, todoOpenAPIHandler, openapi.GinServerOptions{
+	openapiSpec, err := loadOpenAPISpec()
+	if err != nil {
+		log.Fatalf("OpenAPI仕様の読み込みに失敗しました: %v", err)
+	}
+
+	openapiSpec.Servers = nil
+	requestValidator := oapigin.OapiRequestValidatorWithOptions(openapiSpec, &oapigin.Options{
+		SilenceServersWarning: true,
+		Options: openapi3filter.Options{
+			AuthenticationFunc: func(_ context.Context, _ *openapi3filter.AuthenticationInput) error {
+				return nil
+			},
+		},
+		ErrorHandler: func(c *gin.Context, message string, statusCode int) {
+			c.JSON(statusCode, gin.H{
+				"error":   http.StatusText(statusCode),
+				"details": message,
+			})
+		},
+	})
+
+	todoRoutes := router.Group("")
+	todoRoutes.Use(requestValidator)
+	openapi.RegisterHandlersWithOptions(todoRoutes, todoOpenAPIHandler, openapi.GinServerOptions{
 		Middlewares: []openapi.MiddlewareFunc{
 			func(c *gin.Context) {
 				middleware.AuthMiddleware(authService)(c)
@@ -350,6 +376,17 @@ func setupRouter(
 	})
 
 	return router
+}
+
+func loadOpenAPISpec() (*openapi3.T, error) {
+	projectRoot, err := findProjectRoot()
+	if err != nil {
+		return nil, err
+	}
+	specPath := filepath.Join(projectRoot, "openapi", "openapi.yaml")
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	return loader.LoadFromFile(specPath)
 }
 
 // startReminderWorker はリマインダーをチェックして通知を作成するバックグラウンドワーカー

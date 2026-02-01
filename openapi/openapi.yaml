@@ -506,7 +506,7 @@ components:
           description: Nullable. Omit to keep current value.
         tag_ids:
           type: array
-            : true
+          nullable: true
           items:
             type: integer
           description: Nullable. Omit to keep current value.
