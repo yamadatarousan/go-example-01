@@ -17,6 +17,11 @@ info:
     - 404: Resource not found.
     - 409: Conflict (duplicate or uniqueness violation).
     - 500: Unexpected server error.
+
+    Response validation policy:
+    - Scope: /api/v1/todos only (phased rollout).
+    - Enforcement: contract violations return 500.
+    - Logging: request_id, method, path, status, user_id, schema_error.
 servers:
   - url: http://localhost:8080
     description: Local development
