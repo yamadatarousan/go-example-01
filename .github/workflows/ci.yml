@@ -64,6 +64,27 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'  # go.modで指定したバージョンと合わせる
+      
+      # Step 2.5: Node環境のセットアップ（OpenAPI生成に使用）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 2.6: OpenAPI仕様のlint
+      - name: Lint OpenAPI spec
+        run: npx @redocly/cli@latest lint openapi/openapi.yaml
+
+      # Step 2.7: OpenAPI生成物の更新（Go/TS）
+      - name: Generate OpenAPI artifacts
+        run: |
+          go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1 --config openapi/oapi-codegen.yaml openapi/openapi.yaml
+          cd frontend
+          npm ci
+          ./node_modules/.bin/openapi-typescript ../openapi/openapi.yaml -o src/openapi/types.ts
+
+      # Step 2.8: 生成物の更新漏れを検出
+      - name: Check generated artifacts up to date
+        run: git diff --exit-code
 
       # Step 3: データベースマイグレーションの実行
       # golang-migrateツールをインストールし、マイグレーションを適用
