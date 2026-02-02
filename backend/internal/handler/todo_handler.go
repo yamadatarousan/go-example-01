@@ -68,6 +68,12 @@ func (h *TodoHandler) CreateTodo(c *gin.Context) error {
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
 	newTodo.UserID = userID
+	if newTodo.Status == "" {
+		newTodo.Status = "todo"
+	}
+	if newTodo.Priority == "" {
+		newTodo.Priority = "medium"
+	}
 
 	createdTodo, err := h.todoService.CreateTodo(c.Request.Context(), newTodo)
 	if err != nil {
@@ -95,6 +101,36 @@ func (h *TodoHandler) UpdateTodo(c *gin.Context) error {
 	// ログインユーザーのIDを取得
 	claims := c.MustGet("claims").(*service.AppClaims)
 	userID, _ := strconv.Atoi(claims.Subject)
+
+	// 既存TODOを取得して未指定の項目を補完
+	existingTodo, err := h.todoService.GetTodo(c.Request.Context(), todoID, userID)
+	if err != nil {
+		return err
+	}
+	if updateTodo.Name == "" {
+		updateTodo.Name = existingTodo.Name
+	}
+	if updateTodo.Status == "" {
+		updateTodo.Status = existingTodo.Status
+	}
+	if updateTodo.Priority == "" {
+		updateTodo.Priority = existingTodo.Priority
+	}
+	if updateTodo.Description == nil {
+		updateTodo.Description = existingTodo.Description
+	}
+	if updateTodo.DueDate == nil {
+		updateTodo.DueDate = existingTodo.DueDate
+	}
+	if updateTodo.CategoryID == nil {
+		updateTodo.CategoryID = existingTodo.CategoryID
+	}
+	if updateTodo.ParentTodoID == nil {
+		updateTodo.ParentTodoID = existingTodo.ParentTodoID
+	}
+	if updateTodo.ProjectID == nil {
+		updateTodo.ProjectID = existingTodo.ProjectID
+	}
 
 	// 更新対象のTODOを設定
 	updateTodo.ID = todoID

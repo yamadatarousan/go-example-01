@@ -150,8 +150,14 @@ func (r *todoRepository) CreateTodoWithAudit(ctx context.Context, todo domain.To
 func (r *todoRepository) updateTodoInTx(tx *sql.Tx, todo domain.Todo) (domain.Todo, error) {
 	// 1. todosテーブルのレコードを更新
 	result, err := tx.Exec(
-		"UPDATE todos SET name = $1 WHERE id = $2 AND user_id = $3",
-		todo.Name, todo.ID, todo.UserID,
+		`UPDATE todos
+		SET name = $1, description = $2, status = $3, priority = $4,
+			due_date = $5, category_id = $6, parent_todo_id = $7, project_id = $8,
+			updated_at = NOW()
+		WHERE id = $9 AND user_id = $10`,
+		todo.Name, todo.Description, todo.Status, todo.Priority,
+		todo.DueDate, todo.CategoryID, todo.ParentTodoID, todo.ProjectID,
+		todo.ID, todo.UserID,
 	)
 	if err != nil {
 		return todo, err
