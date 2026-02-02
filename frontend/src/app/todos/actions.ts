@@ -3,7 +3,9 @@
 "use server";
 
 import { fetchWithAuth } from "@/lib/server-api";
-import type { Todo } from "@/types";
+import type { components } from "@/openapi/types";
+
+type Todo = components["schemas"]["Todo"];
 
 // TODO一覧を取得する
 export async function getTodos(): Promise<Todo[]> {

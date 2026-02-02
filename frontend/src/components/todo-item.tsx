@@ -1,9 +1,9 @@
 // TODOアイテムコンポーネント
 
-import type { Todo } from "@/types";
+import type { components } from "@/openapi/types";
 
 type TodoItemProps = {
-  todo: Todo;
+  todo: components["schemas"]["Todo"];
 };
 
 export function TodoItem({ todo }: TodoItemProps) {

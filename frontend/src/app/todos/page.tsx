@@ -1,11 +1,11 @@
 // TODO一覧ページ
 
 import { getTodos } from "./actions";
-import type { Todo } from "@/types";
+import type { components } from "@/openapi/types";
 import { TodoItem } from "@/components/todo-item";
 
 export default async function TodosPage() {
-  let todos: Todo[] = [];
+  let todos: components["schemas"]["Todo"][] = [];
   let errorMessage: string | null = null;
 
   try {
