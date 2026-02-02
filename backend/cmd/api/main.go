@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +26,8 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/routers"
+	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -344,6 +348,10 @@ func setupRouter(
 	}
 
 	openapiSpec.Servers = nil
+	openapiRouter, err := gorillamux.NewRouter(openapiSpec)
+	if err != nil {
+		log.Fatalf("OpenAPIルーターの初期化に失敗しました: %v", err)
+	}
 	requestValidator := oapigin.OapiRequestValidatorWithOptions(openapiSpec, &oapigin.Options{
 		SilenceServersWarning: true,
 		Options: openapi3filter.Options{
@@ -365,6 +373,7 @@ func setupRouter(
 
 	todoRoutes := router.Group("")
 	todoRoutes.Use(requestValidator)
+	todoRoutes.Use(responseValidationMiddleware(openapiRouter))
 	openapi.RegisterHandlersWithOptions(todoRoutes, todoOpenAPIHandler, openapi.GinServerOptions{
 		Middlewares: []openapi.MiddlewareFunc{
 			func(c *gin.Context) {
@@ -380,6 +389,128 @@ func setupRouter(
 	})
 
 	return router
+}
+
+type responseBufferWriter struct {
+	gin.ResponseWriter
+	body        bytes.Buffer // レスポンスボディをバッファ
+	statusCode  int          // ステータスコードを保持
+	wroteHeader bool         // ヘッダ書き込み済みか
+	size        int          // 書き込みサイズ
+}
+
+func (w *responseBufferWriter) WriteHeader(statusCode int) {
+	if w.wroteHeader {
+		return
+	}
+	w.statusCode = statusCode
+	w.wroteHeader = true
+}
+
+func (w *responseBufferWriter) WriteHeaderNow() {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (w *responseBufferWriter) Write(data []byte) (int, error) {
+	w.WriteHeaderNow()
+	w.body.Write(data)
+	w.size += len(data)
+	return len(data), nil
+}
+
+func (w *responseBufferWriter) WriteString(s string) (int, error) {
+	return w.Write([]byte(s))
+}
+
+func (w *responseBufferWriter) Status() int {
+	if w.wroteHeader {
+		return w.statusCode
+	}
+	return http.StatusOK
+}
+
+func (w *responseBufferWriter) Size() int {
+	return w.size
+}
+
+func (w *responseBufferWriter) Written() bool {
+	return w.wroteHeader || w.size > 0
+}
+
+func (w *responseBufferWriter) Flush() {
+	// no-op: buffered
+}
+
+func responseValidationMiddleware(router routers.Router) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 通常はレスポンスが書き込みと同時に送信されるため、
+		// 検証に必要な「ボディ全体」を事前に取得できない。
+		// そのため一旦バッファに溜めてから検証し、問題なければ返却する。
+		originalWriter := c.Writer
+		bufferedWriter := &responseBufferWriter{ResponseWriter: originalWriter}
+		c.Writer = bufferedWriter
+
+		c.Next()
+
+		statusCode := bufferedWriter.Status()
+		bodyBytes := bufferedWriter.body.Bytes()
+
+		// 既にエラー応答済みの場合は検証せずに返却する
+		if c.IsAborted() {
+			c.Writer = originalWriter
+			originalWriter.WriteHeader(statusCode)
+			if len(bodyBytes) > 0 {
+				_, _ = originalWriter.Write(bodyBytes)
+			}
+			return
+		}
+
+		// OpenAPIルートへマッチさせてレスポンス検証を行う
+		route, pathParams, err := router.FindRoute(c.Request)
+		if err != nil {
+			c.Writer = originalWriter
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			log.Printf("レスポンス検証エラー: route not found: %v", err)
+			return
+		}
+
+		validationInput := &openapi3filter.ResponseValidationInput{
+			RequestValidationInput: &openapi3filter.RequestValidationInput{
+				Request:    c.Request,
+				PathParams: pathParams,
+				Route:      route,
+			},
+			Status: statusCode,
+			Header: originalWriter.Header(),
+			Body:   io.NopCloser(bytes.NewReader(bodyBytes)),
+		}
+
+		// 契約違反時は500で返し、ログに詳細を残す
+		if err := openapi3filter.ValidateResponse(c.Request.Context(), validationInput); err != nil {
+			requestID, _ := c.Get("RequestID")
+			userID := ""
+			if claimsVal, ok := c.Get("claims"); ok {
+				if claims, ok := claimsVal.(*service.AppClaims); ok {
+					userID = claims.Subject
+				}
+			}
+			log.Printf("レスポンス検証エラー: request_id=%v method=%s path=%s status=%d user_id=%s error=%v",
+				requestID, c.Request.Method, c.Request.URL.Path, statusCode, userID, err)
+
+			c.Writer = originalWriter
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+
+		// 検証OKなら元のレスポンスを返却
+		c.Writer = originalWriter
+		originalWriter.WriteHeader(statusCode)
+		if len(bodyBytes) > 0 {
+			_, _ = originalWriter.Write(bodyBytes)
+		}
+	}
 }
 
 func loadOpenAPISpec() (*openapi3.T, error) {
