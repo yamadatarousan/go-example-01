@@ -108,7 +108,7 @@ function getMockData<T>(
       ],
       POST: { id: 3, name: "新規TODO", status: "todo", priority: "medium", user_id: 1, created_at: "2024-01-01T00:00:00Z", updated_at: "2024-01-01T00:00:00Z" },
     },
-    "/api/v1/todos/stats": {
+    "/api/v1/todos/statistics": {
       GET: { total_count: 10, status_counts: { todo: 5, in_progress: 3, done: 2 }, priority_counts: { high: 2, medium: 5, low: 3 }, overdue_count: 1, due_today_count: 2, due_this_week_count: 5 },
     },
     "/api/v1/projects": {
