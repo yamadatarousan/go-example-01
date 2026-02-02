@@ -72,7 +72,7 @@ jobs:
 
       # Step 2.6: OpenAPI仕様のlint
       - name: Lint OpenAPI spec
-        run: npx @redocly/cli@latest lint openapi/openapi.yaml
+        run: npx @redocly/cli@latest lint --config openapi/redocly.yaml openapi/openapi.yaml
 
       # Step 2.7: OpenAPI生成物の更新（Go/TS）
       - name: Generate OpenAPI artifacts
