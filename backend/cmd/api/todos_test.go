@@ -57,6 +57,74 @@ func TestCreateTodoWithExtendedFields(t *testing.T) {
 	assert.NotNil(t, response["due_date"])
 }
 
+// TestCreateTodoValidationMissingName は必須フィールド欠落の検証テスト
+func TestCreateTodoValidationMissingName(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	todoBody := `{"priority": "high", "status": "todo"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestCreateTodoValidationInvalidEnum はenum違反の検証テスト
+func TestCreateTodoValidationInvalidEnum(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+	t.Setenv("OPENAPI_DEBUG", "true")
+
+	todoBody := `{"name": "Invalid Enum", "priority": "urgent", "status": "todo"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "openapi", response["error_source"])
+}
+
+// TestCreateTodoValidationTypeMismatch は型不一致の検証テスト
+func TestCreateTodoValidationTypeMismatch(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+	t.Setenv("OPENAPI_DEBUG", "true")
+
+	todoBody := `{"name": "Type Mismatch", "tag_ids": "not-an-array"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	assert.Equal(t, "openapi", response["error_source"])
+}
+
+// TestCreateTodoValidationNullable はnullable項目の許容テスト
+func TestCreateTodoValidationNullable(t *testing.T) {
+	router := setupTestRouter(testDB)
+	token := loginAndGetToken(t, router)
+
+	todoBody := `{"name": "Nullable Todo", "description": null, "status": "todo", "priority": "low"}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/todos", bytes.NewBufferString(todoBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
 // TestGetTodo は個別TODO取得のテスト
 
 func TestGetTodo(t *testing.T) {
