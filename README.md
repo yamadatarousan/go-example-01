@@ -71,3 +71,32 @@ docker-compose exec db psql -U user -d todo_db
 - `\q`: `psql`を終了
 
 ---
+
+## OpenAPI 運用手順
+
+### 仕様ファイル
+- `openapi/openapi.yaml` を単一の契約ソースとする
+
+### 生成物の配置
+- Go生成物: `backend/internal/openapi/gen`
+- TS生成物: `frontend/src/openapi`
+- 生成物配下は手編集禁止
+
+### 生成コマンド
+```bash
+# Go 型生成
+$(go env GOPATH)/bin/oapi-codegen --config openapi/oapi-codegen.yaml openapi/openapi.yaml
+
+# TS 型生成
+./frontend/node_modules/.bin/openapi-typescript openapi/openapi.yaml -o frontend/src/openapi/types.ts
+```
+
+### Lint コマンド
+```bash
+npx @redocly/cli@latest lint --config openapi/redocly.yaml openapi/openapi.yaml
+```
+
+### 更新フロー
+1. `openapi/openapi.yaml` を更新
+2. Go/TS の生成コマンドを実行
+3. 生成物の差分を確認（CIでも検知）
